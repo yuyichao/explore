@@ -24,3 +24,5 @@ __pycache__/
 *.pyc
 *.pya
 *.fdb_latexmk
+*.gir
+*.typelib

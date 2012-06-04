@@ -19,6 +19,7 @@ DEFINE_DEFAULT(d_print1)
 DEFINE_DEFAULT(d_print2)
 DEFINE_DEFAULT(d_wrapper1)
 DEFINE_DEFAULT(d_wrapper2)
+DEFINE_DEFAULT(d_s_method)
 
 
 GType
@@ -63,6 +64,7 @@ testvm_object_class_init(TestvmObjectClass *klass, gpointer data)
     klass->do_print2 = d_print2;
     klass->wrapper1 = d_wrapper1;
     klass->wrapper2 = d_wrapper2;
+    klass->s_method = d_s_method;
 }
 
 static void
@@ -137,4 +139,10 @@ void testvm_object_real_wrapper2(TestvmObject *mobj)
 {
     printf("%s\n", __func__);
     TESTVM_OBJECT_GET_CLASS(mobj)->wrapper2(mobj);
+}
+
+void testvm_object_real_s_method(TestvmObject *mobj)
+{
+    printf("%s\n", __func__);
+    TESTVM_OBJECT_GET_CLASS(mobj)->s_method();
 }

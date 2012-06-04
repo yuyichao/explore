@@ -29,6 +29,8 @@ struct _TestvmObjectClass {
     void (*do_print2)(TestvmObject *mobj);
     void (*wrapper1)(TestvmObject *mobj);
     void (*wrapper2)(TestvmObject *mobj);
+    void (*s_method)();
+    char *string;
 };
 
 #ifdef __cplusplus
@@ -40,6 +42,7 @@ extern "C" {
     void testvm_object_wrapper1(TestvmObject *mobj);
     void testvm_object_real_print2(TestvmObject *mobj);
     void testvm_object_real_wrapper2(TestvmObject *mobj);
+    void testvm_object_real_s_method(TestvmObject *mobj);
 #ifdef __cplusplus
 }
 #endif

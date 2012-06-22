@@ -18,4 +18,5 @@ main()
     printf("%lx\n", TESTVM_OBJECT_GET_CLASS(obj2)->self);
     printf("%lx\n", TESTVM_OBJECT_GET_CLASS(der1)->self);
     printf("%lx\n", TESTVM_OBJECT_GET_CLASS(der2)->self);
+    return 0;
 }

@@ -1,0 +1,871 @@
+#!/bin/bash
+
+##ToDo： 区分注释，包的生成规则，头文件的安装,read from config file
+
+VersionOfCreator='0.8.2'
+NameOfScript='YYC Makefile Creator'
+
+####
+
+for (( i=1 ; i<=$# ; i++ ))
+do
+    case ${!i} in
+	-edit)
+	    echo "正在进入编辑模式..."
+	    config-mc $0
+	    exit
+	    ;;
+    esac
+done
+
+#函数定义
+
+function getpath()
+{
+    pathlist=""
+    for fullname in $@
+    do
+    	if [[ "$fullname" =~ / ]]
+    	then
+	    pathname="${fullname%/*}"
+	else
+	    pathname=.
+	fi
+	if [[ " $pathlist " =~ " $pathname " ]]
+	then
+	    continue
+	else
+	    pathlist="${pathlist} ${pathname}"
+	fi
+    done
+    echo $pathlist
+    unset pathlist
+    unset fullname
+    unset pathname
+}
+
+function CheckQt()
+{
+    for relyfile in $@
+    do
+	if [ "${relyfile}" == "" ]
+	then
+    	    return 1
+	fi
+	if [ $relyfile = \\ ]
+	then
+	    continue
+	fi
+	relyfile=${relyfile##*/}
+	if [[ " ${qthead} " =~ " ${relyfile%.h}.h " ]]
+	then
+	    return 0
+	fi
+    done
+    return 1
+}
+
+function CheckMoc()
+{
+    count=`grep -c Q_OBJECT ${1}`
+    if [ $count != 0 ]
+    then
+	return 0
+    fi
+    return 1
+}
+
+##参数定义（初始值）
+
+echo "正在初始化..."
+
+MAKEFILE="Makefile"
+
+CXX="g++ -c -fPIC"
+CC="gcc -c -fPIC"
+LINK="g++"
+MAKER="make"
+FLAGS="-W -Wall -DLINUX_"
+QT_FLAGS="-DQT_NO_DEBUG -DQT_GUI_LIB -DQT_CORE_LIB -DQT_SHARED"
+QT_DEBUG_FLAGS="-UQT_NODEBUG"
+OPT_FLAGS="-O2"
+DEBUG_FLAGS="-g -D_DEBUG_"
+SO_FLAGS="-shared -fPIC"
+DEBUGER="gdb"
+DEBUGER_FLAGS=""
+TAR="tar --bzip2 -c"
+UNTAR="tar --bzip2 -x"
+TAR_NAME="\$(target).tar.bz2"
+BROWSER="nautilus"
+
+qthead="qaccel.h qaccessible.h qaction.h qapplication.h qasciicache.h qasciidict.h qasyncimageio.h qasyncio.h qbitarray.h qbitmap.h qbrush.h qbuffer.h qbutton.h qbuttongroup.h qcache.h qcanvas.h qcdestyle.h qcheckbox.h qclipboard.h qcolor.h qcolordialog.h qcombobox.h qcommonstyle.h qcopchannel_qws.h qcstring.h qcursor.h qdatabrowser.h qdatastream.h qdatatable.h qdataview.h qdatetime.h qdatetimeedit.h qdesktopwidget.h qdial.h qdialog.h qdict.h qdir.h qdirectpainter_qws.h qdns.h qdockarea.h qdockwindow.h qdom.h qdragobject.h qdrawutil.h qdropsite.h qeditorfactory.h qerrormessage.h qeucjpcodec.h qeuckrcodec.h qevent.h qfile.h qfiledialog.h qfileinfo.h qfocusdata.h qfont.h qfontdatabase.h qfontdialog.h qfontinfo.h qfontmanager_qws.h qfontmetrics.h qframe.h qftp.h qgb18030codec.h qgfx_qws.h qgl.h qglcolormap.h qglobal.h qgrid.h qgridview.h qgroupbox.h qguardedptr.h qhbox.h qhbuttongroup.h qheader.h qhgroupbox.h qhostaddress.h qhttp.h qiconset.h qiconview.h qimage.h qimageformatplugin.h qinputdialog.h qintcache.h qintdict.h qiodevice.h qjiscodec.h qkeyboard_qws.h qkeysequence.h qlabel.h qlayout.h qlcdnumber.h qlibrary.h qlineedit.h qlistbox.h qlistview.h qlocalfs.h qlock_qws.h qmainwindow.h qmap.h qmemarray.h qmenubar.h qmenudata.h qmessagebox.h qmetaobject.h qmime.h qmotifplusstyle.h qmotifstyle.h qmovie.h qmultilineedit.h qmutex.h qnamespace.h qnetworkprotocol.h qnp.h qobject.h qobjectcleanuphandler.h qobjectlist.h qpaintdevice.h qpaintdevicemetrics.h qpainter.h qpair.h qpalette.h qpen.h qpicture.h qpixmap.h qpixmapcache.h qplatinumstyle.h qpngio.h qpoint.h qpointarray.h qpopupmenu.h qprinter.h qprocess.h qprogressbar.h qprogressdialog.h qptrcollection.h qptrdict.h qptrlist.h qptrqueue.h qptrstack.h qptrvector.h qpushbutton.h qradiobutton.h qrangecontrol.h qrect.h qregexp.h qregion.h qrtlcodec.h qscrollbar.h qscrollview.h qsemaphore.h qserversocket.h qsessionmanager.h qsettings.h qsgistyle.h qsignal.h qsignalmapper.h qsimplerichtext.h qsize.h qsizegrip.h qsizepolicy.h qsjiscodec.h qslider.h qsocket.h qsocketdevice.h qsocketnotifier.h qsortedlist.h qsound.h qspinbox.h qsplitter.h qsql.h qsqlcursor.h qsqldatabase.h qsqldriver.h qsqldriverplugin.h qsqleditorfactory.h qsqlerror.h qsqlfield.h qsqlform.h qsqlindex.h qsqlpropertymap.h qsqlquery.h qsqlrecord.h qsqlresult.h qstatusbar.h qstring.h qstringlist.h qstrlist.h qstyle.h qstylefactory.h qstyleplugin.h qstylesheet.h qtabbar.h qtabdialog.h qtable.h qtabwidget.h qtextbrowser.h qtextcodec.h qtextcodecplugin.h qtextedit.h qtextstream.h qtextview.h qthread.h qtimer.h qtmultilineedit.h qtoolbar.h qtoolbutton.h qtooltip.h qtranslator.h qtsciicodec.h qttableview.h qurl.h qurlinfo.h qurloperator.h qvalidator.h qvaluelist.h qvaluestack.h qvaluevector.h qvariant.h qvbox.h qvbuttongroup.h qvgroupbox.h qwaitcondition.h qwhatsthis.h qwidget.h qwidgetfactory.h qwidgetplugin.h qwidgetstack.h qwindowdefs.h qwindowsstyle.h qwindowsystem_qws.h qwizard.h qwmatrix.h qworkspace.h qwsdecoration_qws.h qwsmouse_qws.h qxml.h qxt.h"
+
+##搜索需要处理的文件
+
+echo "建立文件列表..."
+
+hfilelist=`find -type f -name "*.h" | tr [:space:] ' '`
+includepath=""
+
+cppfilelist=`find -type f -name "*.cpp" | tr [:space:] ' '`
+cfilelist=`find -type f -name "*.c" | tr [:space:] ' '`
+
+libfilelist="`find -type f -name "*.a" | tr [:space:] ' '` `find -type f -name "*.lib" | tr [:space:] ' '`"
+##########################
+
+sofilelist=`find -type f -name "*.so" | tr [:space:] ' '`
+sharelibnames=""
+sofilelistc=""
+sharelibnamesc=""
+
+libpath="-L/usr/lib"
+
+IfQt=""
+IfSo=""
+IfChangeO=""
+IfNoInstall=""
+HaveSo=""
+Debug="true"
+IfTar=""
+IfNau=""
+
+unset argc
+outpath="bin"
+qtinclude="-I/usr/share/qt4/mkspecs/linux-g++ -I. -I/usr/include/qt4/QtCore -I/usr/include/qt4/QtGui -I/usr/include/qt4"
+qtlib="-lQtGui -lQtCore -lpthread"
+target=`pwd`
+target="${target##*/}"
+moclist=""
+curdir2=`pwd`
+InstallDir="/usr/bin"
+LIB_DIR="/usr/lib"
+
+##读取参数
+
+echo "读取参数..."
+
+for (( i=1 ; i<=$# ; i++ ))
+do
+    case ${!i} in
+	-NoTar)
+	    IfTar="false"
+	    ;;
+	-Tar)
+	    IfTar="true"
+	    ;;
+	-NoBro)
+	    IfNau="false"
+	    ;;
+	-Bro)
+	    IfNau="true"
+	    ;;
+	-l*)
+	    sharelibnames="${sharelibnames} ${!i}"
+	    continue
+	    ;;
+	-L*)
+	    libpath="${libpath} ${!i}"
+	    continue
+	    ;;
+	-Q)
+	    IfQt="true"
+	    continue
+	    ;;
+	-Nodebug)
+	    Debug=""
+	    continue
+	    ;;
+	-op)
+	    let 'i=i+1'
+	    outpath=${!i}
+	    outpath="${outpath%/}"
+	    IfChangeO="true"
+	    continue
+	    ;;
+	-so)
+	    IfSo="true"
+	    continue
+	    ;;
+	-install)
+	    let 'i=i+1'
+	    InstallDir="${!i}"
+	    continue
+	    ;;
+	-noinstall)
+	    IfNoInstall="true"
+	    continue
+	    ;;
+	-T)
+	    let 'i=i+1'
+	    target="${!i}"
+	    continue
+	    ;;
+	-I*)
+	    includepath="${includepath} ${!i}"
+	    continue
+	    ;;
+	-V)
+	    echo $VersionOfCreator
+	    exit
+	    ;;
+    esac
+    argc[${#argc[@]}]=${!i}
+done
+
+if [ "${Debug}" == "" ]
+then
+    if [ "${IfTar}" == "" ]
+    then
+	IfTar="false"
+    fi
+    if [ "${IfNau}" == "" ]
+    then
+	IfNau="false"
+    fi
+else
+    if [ "${IfTar}" == "" ]
+    then
+	IfTar="true"
+    fi
+    if [ "${IfNau}" == "" ]
+    then
+	IfNau="true"
+    fi
+fi
+
+if [ "${IfSo}" == "true" ]
+then
+    if [ "${IfChangeO}" != "true" ]
+    then
+	outpath="."
+    fi
+    target=${target#lib}
+    target="lib${target%.so}.so"
+    target_debug="${target%.so}_debug.so"
+else
+    target_debug="${target}_debug"
+fi
+
+unset j
+unset i
+
+##建立新的makefile文件
+
+echo "建立新${MAKEFILE}文件..."
+
+rm ${MAKEFILE} >& /dev/null
+>${MAKEFILE}
+
+if [ $? -ne 0 ]
+then
+    echo "建立makefile文件失败!!!"
+    exit 1
+fi
+
+##生成头文件目录列表
+
+echo "分析文件..."
+echo "	获取头文件目录..."
+
+for pathofhfile in `getpath $hfilelist`
+do
+    includepath="${includepath} -I${pathofhfile}"
+done
+unset pathofhfile
+
+##生成库文件目录列表
+
+echo "	获取库文件列表..."
+
+for pathoflib in `getpath "${libfilelist} ${sofilelist}"`
+do
+    libpath="${libpath} -L${pathoflib}"
+done
+unset pathoflib
+
+echo "	获取库名称..."
+
+for sharename in $sofilelist
+do
+    sharename=${sharename##*/}
+    sharename=${sharename#lib}
+    sharename=${sharename%.so}
+    sharelibnames="${sharelibnames} -l${sharename}"
+done
+
+##
+
+echo "	搜索依赖的头文件并查找需要生成的库..."
+
+echo "		头文件"
+
+unset hfilearray
+for hfile in $hfilelist
+do
+    hrely=`g++ -MM ${includepath} ${qtinclude} $hfile`
+    hrely="${hrely#*: }"
+    if CheckQt $hrely
+    then
+	IfQt="true"
+    fi
+    hfilearray[${#hfilearray[@]}]=$hfile
+done
+unset hrely
+
+echo "		cpp文件"
+
+unset cppfilearray
+unset cppoarray
+unset soarray
+for cppfile in $cppfilelist
+do
+    pathofcpp=`getpath $cppfile`
+    if [[ "${pathofcpp%/}/" =~ \.so/ ]]
+    then
+	HaveSo="true"
+	sopath="${pathofcpp%%.so*}.so"
+	if [[ " `echo "${soarray[@]}" | tr [:space:] ' '` " =~ " ${sopath} "  ]]
+	then
+	    continue
+	fi
+	soarray[${#soarray[@]}]=${sopath}
+	soname=${sopath##*/}
+	soname=${soname#lib}
+	soname=${soname%.so}
+	sofilelistc="${sofilelistc} ${outpath}/${sopath}/lib${soname}.so"
+	sharelibnamesc="${sharelibnamesc} -l${soname}"
+	if [[ " ${libpath} " =~ " -L${outpath}/${sopath} " ]]
+	then
+	    libpath=$libpath
+	else
+	    libpath="${libpath} -L${outpath}/${sopath}"
+	fi
+	continue
+    fi
+    cppfilearray[${#cppfilearray[@]}]=${cppfile}
+    cppoarray[${#cppoarray[@]}]="\$(outpath)/${cppfile%.cpp}.o"
+    cpprely=`g++ -MM ${includepath} ${qtinclude} $cppfile`
+    cpprely="${cpprely#*: }"
+    if CheckQt $cpprely
+    then
+	IfQt="true"
+    fi
+done
+unset cpprely
+unset cppfile
+unset pathofcpp
+
+echo "		c文件"
+
+unset cfilearray
+unset coarray
+for cfile in $cfilelist
+do
+    pathofc=`getpath $cfile`
+    if [[ "${pathofc%/}/" =~ \.so/ ]]
+    then
+	HaveSo="true"
+	sopath="${pathofc%%.so*}.so"
+	if [[ " `echo "${soarray[@]}" | tr [:space:] ' '` " =~ " ${sopath} "  ]]
+	then
+	    continue
+	fi
+	soarray[${#soarray[@]}]=${sopath}
+	soname=${sopath##*/}
+	soname=${soname#lib}
+	soname=${soname%.so}
+	sofilelistc="${sofilelistc} ${outpath}/${sopath}/lib${soname}.so"
+	sharelibnamesc="${sharelibnamesc} -l${soname}"
+	if [[ " ${libpath} " =~ " -L${outpath}/${sopath} " ]]
+	then
+	    libpath="${libpath}"
+	else
+	    libpath="${libpath} -L${outpath}/${sopath}"
+	fi
+	continue
+    fi
+    cfilearray[${#cfilearray[@]}]=${cfile}
+    coarray[${#coarray[@]}]="\$(outpath)/${cfile%.c}.o"
+    crely=`g++ -MM ${includepath} ${qtinclude} $cfile`
+    crely="${cpprely#*: }"
+    if CheckQt $crely
+    then
+	IfQt="true"
+    fi
+done
+unset crely
+unset cfile
+unset pathofc
+
+##
+
+echo "	生成目录列表..."
+
+NEW_DIR=""
+
+for pathofsrc in `getpath ${cppfilelist} ${cfilelist}`
+do
+    NEW_DIR="${NEW_DIR} \$(outpath)/${pathofsrc}"
+done
+
+##
+
+if [ "$IfQt" = "true" ]
+then
+    INCLUDE_FLAGS="${includepath} \$(qtinclude)"
+    ORG_LIB_FLAGS="${sharelibnames} \$(qtlib)"
+    FLAGS="${FLAGS} \$(QT_FLAGS)"
+    if [ "$Debug" == "true" ]
+    then
+	DEBUG_FLAGS="${DEBUG_FLAGS} \$(QT_DEBUG_FLAGS)"
+    fi
+else
+    INCLUDE_FLAGS="${includepath}"
+    ORG_LIB_FLAGS="${sharelibnames}"
+fi
+LIB_FLAGS="${sharelibnamesc} \$(ORG_LIB_FLAGS)"
+
+##
+
+if [ "$IfQt" == "true" ]
+then
+    echo "	查找需要元对象的编辑文件..."
+    unset hmocarray
+    unset cppmocarray
+    unset hoarray
+    unset cppmocoarray
+
+    for (( i = 0 ; i < ${#hfilearray[@]} ; i++ ))
+    do
+	if CheckMoc ${hfilearray[$i]}
+	then
+	    hmocarray[$i]="true"
+	    hoarray[$i]="\$(outpath)/${hfilearray[$i]%.h}_moc.o"
+	    moclist="${moclist} \$(outpath)/${hfilearray[$i]%.h}_moc.cpp"
+	    pathofmoc=`getpath ${hfilearray[$i]}`
+	    if [[ " ${NEW_DIR} " =~ " ${pathofmoc} " ]]
+	    then
+		NEW_DIR=${NEW_DIR}
+	    else
+		NEW_DIR="${NEW_DIR} \$(outpath)/${pathofmoc}"
+	    fi
+	else
+	    hmocarray[$i]=false
+	fi
+    done
+
+    for (( i = 0 ; i < ${#cppfilearray[@]} ; i++ ))
+    do
+	if CheckMoc ${cppfilearray[$i]}
+	then
+	    cppmocarray[$i]="true"
+	    cppmocoarray[$i]="\$(outpath)/${cppfilearray[$i]%.cpp}__moc.o"
+	    moclist="${moclist} \$(outpath)/${cppfilearray[$i]%.cpp}__moc.cpp"
+	else
+	    cppmocarray[$i]=false
+	fi
+    done
+fi
+
+##
+olist="`echo ${cppoarray[@]} | tr [:space:] ' '` `echo ${coarray[@]} | tr [:space:] ' '` `echo ${hoarray[@]} | tr [:space:] ' '` `echo ${cpppmocoarray[@]} | tr [:space:] ' '`"
+
+if [ "$Debug" == "true" ]
+then
+    debug_o_list=""
+    for objectfile in $olist
+    do
+	debug_o_list="${debug_o_list} ${objectfile%.o}_debug.o"
+    done
+    debug_so_list=""
+    for sofile in ${sofilelistc}
+    do
+	debug_so_list="${debug_so_list} ${sofile%.so}_debug.so"
+    done
+fi
+
+####生成makefile文件开头
+
+echo "写入${MAKEFILE}文件..."
+echo "########################################################" >> ${MAKEFILE}
+echo "#" >> ${MAKEFILE}
+echo "#Created By ${NameOfScript} ${VersionOfCreator}" >> ${MAKEFILE}
+echo "#" >> ${MAKEFILE}
+echo "########################################################" >> ${MAKEFILE}
+
+echo "	生成make变量定义..."
+
+echo "CXX = ${CXX}" >> ${MAKEFILE}
+echo "CC = ${CC}" >> ${MAKEFILE}
+echo "OPT_FLAGS = ${OPT_FLAGS}" >> ${MAKEFILE}
+echo "LINK = ${LINK}" >> ${MAKEFILE}
+echo "MAKER = ${MAKER}" >> ${MAKEFILE}
+echo "outpath = ${outpath}" >> ${MAKEFILE}
+echo "INCLUDE_FLAGS = ${INCLUDE_FLAGS}" >> ${MAKEFILE}
+echo "ORG_LIB_FLAGS = ${ORG_LIB_FLAGS}" >> ${MAKEFILE}
+echo "LIB_FLAGS = ${LIB_FLAGS}" >> ${MAKEFILE}
+echo "LIB_PATH = ${libpath}" >> ${MAKEFILE}
+echo "olist = ${olist}" >> ${MAKEFILE}
+echo "sofilelistc = ${sofilelistc}" >> ${MAKEFILE}
+echo "FLAGS = ${FLAGS}" >> ${MAKEFILE}
+echo "SO_FLAGS = ${SO_FLAGS}" >> ${MAKEFILE}
+if [ "$Debug" == "true" ]
+then
+    echo "DEBUG_FLAGS = ${DEBUG_FLAGS}" >> ${MAKEFILE}
+    echo "debug_o_list = ${debug_o_list}" >> ${MAKEFILE}
+    echo "debug_so_list = ${debug_so_list}" >> ${MAKEFILE}
+    echo "target_debug = ${target_debug}" >> ${MAKEFILE}
+    echo "DEBUGER = ${DEBUGER}" >> ${MAKEFILE}
+    echo "DEBUGER_FLAGS = ${DEBUGER_FLAGS}" >> ${MAKEFILE}
+fi
+echo "hfilelist = ${hfilelist}" >> ${MAKEFILE}
+echo "NEW_DIR = ${NEW_DIR}" >> ${MAKEFILE}
+if [ "$IfQt" == "true" ]
+then
+    if [ "$Debug" == "true" ]
+    then
+	echo "QT_DEBUG_FLAGS=${QT_DEBUG_FLAGS}"
+    fi
+    echo "QT_FLAGS = ${QT_FLAGS}" >> ${MAKEFILE}
+    echo "moclist = ${moclist}" >> ${MAKEFILE}
+    echo "MOC = moc" >> ${MAKEFILE}
+    echo "qtinclude = ${qtinclude}" >> ${MAKEFILE}
+    echo "qtlib = ${qtlib}" >> ${MAKEFILE}
+fi
+if [ "$IfNoInstall" != "true" ]
+then
+    echo "InstallDir = ${InstallDir}" >> ${MAKEFILE}
+fi
+echo "target = ${target}" >> ${MAKEFILE}
+echo "existo = \`find -type f -name \"*.o\"\`" >> ${MAKEFILE}
+if [ "$IfNoInstall" != "true" ]
+then
+    if [ "$IfSo" == "true" ]
+    then
+	echo "LIB_DIR = ${LIB_DIR}" >> ${MAKEFILE}
+    fi
+fi
+if [ "${IfTar}" = "true" ]
+then
+    echo "TAR = ${TAR}" >> ${MAKEFILE}
+    echo "TAR_NAME = ${TAR_NAME}" >> ${MAKEFILE}
+    echo "UNTAR = ${UNTAR}" >> ${MAKEFILE}
+fi
+if [ "${IfNau}" = "true" ]
+then
+    echo "BROWSER = ${BROWSER}" >> ${MAKEFILE}
+fi
+echo "" >> ${MAKEFILE}
+
+####生成链接规则
+
+echo "	生成链接规则..."
+
+echo ".PHONY : all" >> ${MAKEFILE}
+echo "all : \$(NEW_DIR) \$(outpath)/\$(target) \$(olist) \$(moclist) \$(sofilelistc)" >> ${MAKEFILE}
+echo "\$(outpath)/\$(target) : \$(NEW_DIR) \$(olist) \$(moclist) \$(sofilelistc)" >> ${MAKEFILE}
+if [ "$IfSo" == "true" ]
+then
+    echo "	\$(LINK) \$(FLAGS) \$(OPT_FLAGS) \$(LIB_PATH) \$(SO_FLAGS) -o \$(outpath)/\$(target) \$(olist) \$(LIB_FLAGS)" >> ${MAKEFILE}
+else
+    echo "	\$(LINK) \$(FLAGS) \$(OPT_FLAGS) \$(LIB_PATH) -o \$(outpath)/\$(target) \$(olist) \$(LIB_FLAGS)" >> ${MAKEFILE}
+fi
+if [ "$Debug" == "true" ]
+then
+    echo ".PHONY : debug" >> ${MAKEFILE}
+    echo "debug : \$(NEW_DIR) \$(outpath)/\$(target_debug) \$(debug_o_list) \$(moclist) \$(debug_so_list)" >> ${MAKEFILE}
+    echo "\$(outpath)/\$(target_debug) : \$(NEW_DIR) \$(debug_o_list) \$(moclist) \$(debug_so_list)" >> ${MAKEFILE}
+    if [ "$IfSo" == "true" ]
+    then
+	echo "	\$(LINK) \$(FLAGS) \$(DEBUG_FLAGS) \$(LIB_PATH) \$(SO_FLAGS) -o \$(outpath)/\$(target_debug) \$(debug_o_list) \$(debug_so_list) \$(ORG_LIB_FLAGS)" >> ${MAKEFILE}
+    else
+	echo "	\$(LINK) \$(FLAGS) \$(DEBUG_FLAGS) \$(LIB_PATH) -o \$(outpath)/\$(target_debug) \$(debug_o_list) \$(debug_so_list) \$(ORG_LIB_FLAGS)" >> ${MAKEFILE}
+    fi
+fi
+
+###############################################################
+
+echo "	生成新建目录规则..."
+
+for pathofsrc in ${NEW_DIR}
+do
+    echo "${pathofsrc} :" >> ${MAKEFILE}
+    echo "	mkdir -p ${pathofsrc}" >> ${MAKEFILE}
+done
+
+###############################################################
+
+if [ "$IfQt" = "true" ]
+then
+	echo "	生成元对象编辑规则..."
+    for (( i = 0 ; i < ${#hfilearray[@]} ; i++ ))
+    do
+	if [ "${hmocarray[$i]}" == "true" ]
+	then
+	    echo "${hoarray[$i]%.o}.cpp : ${hfilearray[$i]}" >> ${MAKEFILE}
+	    echo "	\$(MOC) -o ${hoarray[$i]%.o}.cpp ${hfilearray[$i]}" >> ${MAKEFILE}
+	    echo "${hoarray[$i]} : ${hoarray[$i]%.o}.cpp ${hfilearray[$i]}" >> ${MAKEFILE}
+	    echo "	\$(CXX) \$(FLAGS) \$(OPT_FLAGS) \$(INCLUDE_FLAGS) -o ${hoarray[$i]} ${hoarray[$i]%.o}.cpp" >> ${MAKEFILE}
+	    if [ "$Debug" == "true"  ]
+	    then
+		echo "${hoarray[$i]%.o}_debug.o: ${hoarray[$i]%.o}.cpp ${hfilearray[$i]}" >> ${MAKEFILE}
+		echo "	\$(CXX) \$(FLAGS) \$(DEBUG_FLAGS) \$(INCLUDE_FLAGS) -o ${hoarray[$i]}_debug.o ${hoarray[$i]%.o}.cpp" >> ${MAKEFILE}
+	    fi
+	fi
+    done
+
+    for (( i = 0 ; i < ${#cppfilearray[@]} ; i++ ))
+    do
+	if [ "${cppmocarray[$i]}" == "true" ]
+	then
+	    echo "${cppmocoarray[$i]%.o}.cpp : ${cppfilearray[$i]}" >> ${MAKEFILE}
+	    echo "	\$(MOC) -o ${cppmocoarray[$i]%.o}.cpp ${cppfilearray[$i]}" >> ${MAKEFILE}
+	    echo "${cppmocoarray[$i]} : ${cppmocoarray[$i]%.o}.cpp ${cppfilearray[$i]}" >> ${MAKEFILE}
+	    echo "	\$(CXX) \$(FLAGS) \$(OPT_FLAGS) \$(INCLUDE_FLAGS) -o ${cppmocoarray[$i]} ${cppmocoarray[$i]%.o}.cpp" >> ${MAKEFILE}
+	    if [ "$Debug" == "true"  ]
+	    then
+		echo "${cppmocoarray[$i]%.o}_debug.o: ${cppmocoarray[$i]%.o}.cpp ${cppfilearray[$i]}" >> ${MAKEFILE}
+		echo "	\$(CXX) \$(FLAGS) \$(DEBUG_FLAGS) \$(INCLUDE_FLAGS) -o ${cppmocoarray[$i]}_debug.o ${cppmocoarray[$i]%.o}.cpp" >> ${MAKEFILE}
+	    fi
+	fi
+    done
+fi
+
+###############################################################
+echo "	生成编译规则..."
+echo "		编译c文件"
+for (( i = 0 ; i < ${#cfilearray[@]} ; i++ ))
+do
+    relyfiles=`g++ ${includepath} -MM ${cfilearray[$i]}`
+    relys=""
+    for relyfile in ${relyfiles#*: }
+    do
+	if [ "$relyfile" = \\ ]
+	then
+	    continue
+	fi
+	if [ "$relyfile" = "" ]
+	then
+	    continue
+	fi
+	relys="${relys} ${relyfile}"
+    done
+    echo "\$(outpath)/${cfilearray[$i]%.c}.o: ${relys}" >> ${MAKEFILE}
+    echo "	\$(CC) \$(FLAGS) \$(OPT_FLAGS) \$(INCLUDE_FLAGS) -o \$(outpath)/${cfilearray[$i]%.c}.o ${cfilearray[$i]}" >> ${MAKEFILE}
+    if [ "$Debug" == "true"  ]
+    then
+	echo "\$(outpath)/${cfilearray[$i]%.c}_debug.o: ${relys}" >> ${MAKEFILE}
+	echo "	\$(CC) \$(FLAGS) \$(DEBUG_FLAGS) \$(INCLUDE_FLAGS) -o \$(outpath)/${cfilearray[$i]%.c}_debug.o ${cfilearray[$i]}" >> ${MAKEFILE}
+    fi
+done
+
+echo "		编译cpp文件"
+for (( i = 0 ; i < ${#cppfilearray[@]} ; i++ ))
+do
+    relyfiles=`g++ ${includepath} -MM ${cppfilearray[$i]}`
+    relys=""
+    for relyfile in ${relyfiles#*: }
+    do
+	if [ "$relyfile" = \\ ]
+	then
+	    continue
+	fi
+	if [ "$relyfile" = "" ]
+	then
+	    continue
+	fi
+	relys="${relys} ${relyfile}"
+    done
+    echo  "\$(outpath)/${cppfilearray[$i]%.cpp}.o: ${relys}" >> ${MAKEFILE}
+    echo "	\$(CXX) \$(OPT_FLAGS) \$(FLAGS) \$(INCLUDE_FLAGS) -o \$(outpath)/${cppfilearray[$i]%.cpp}.o ${cppfilearray[$i]}" >> ${MAKEFILE}
+    if [ "$Debug" == "true"  ]
+    then
+	echo "\$(outpath)/${cppfilearray[$i]%.cpp}_debug.o: ${relys}" >> ${MAKEFILE}
+	echo "	\$(CXX) \$(FLAGS) \$(DEBUG_FLAGS) \$(INCLUDE_FLAGS) -o \$(outpath)/${cppfilearray[$i]%.cpp}_debug.o ${cppfilearray[$i]}" >> ${MAKEFILE}
+    fi
+done
+
+###############################################################
+
+if [ ${#soarray[@]} != 0 ]
+then
+    echo "	递归建立..."
+fi
+
+for sopath in ${soarray[@]}
+do
+    cd $sopath
+    curdir1=`pwd`
+    curdir=""
+    for (( i=`echo ${curdir1#${curdir2}} | tr -d -c / | wc -c` ; i > 0 ; i -- ))
+    do
+	curdir="../${curdir}"
+    done
+    curdir=${curdir%/}
+    creator="$0 -NoTar -NoBro -so -op ${curdir}/${outpath}/${sopath} ${sharelibnames} -install ${InstallDir}"
+    if [ "$IfQt" == "true" ]
+    then
+	creator="${creator} -Q"
+    fi
+    if [ "$Debug" != "true" ]
+    then
+	creator="${creator} -Nodebug"
+    fi
+    for arg in $libpath
+    do
+	if [ "$arg" = "" ]
+	then
+	    break
+	fi
+	if [[ $arg =~ ^-L/ ]]
+	then
+	    creator="${creator} ${arg}"
+	else
+		if [[ $arg =~ ^-L ]]
+		then
+	    	creator="${creator} -L${curdir}/${arg#-L}"
+	    fi
+	fi
+    done
+    for arg in $includepath
+    do
+	if [ "$arg" = "" ]
+	then
+	    break
+	fi
+	if [[ $arg =~ ^-I/ ]]
+	then
+	    creator="${creator} ${arg}"
+	else
+		if [[ $arg =~ ^-I ]]
+		then
+	    	creator="${creator} -I${curdir}/${arg#-I}"
+	    fi
+	fi
+    done
+    soname=${sopath##*/}
+    soname="lib${soname#lib}"
+    creator="${creator} -T ${soname}"
+    $creator
+    cd "$curdir"
+    echo "${outpath}/${sopath}/${soname} : ${sopath}/${MAKEFILE} `find ${sopath} -type f -name "*.c" | tr [:space:] ' '` `find ${sopath} -type f -name "*.h" | tr [:space:] ' '` `find ${sopath} -type f -name "*.cpp" | tr [:space:] ' '`" >> ${MAKEFILE}
+    echo "	cd ${sopath} && \$(MAKER)" >> ${MAKEFILE}
+    if [ "$Debug" == "true" ]
+    then
+	echo "${outpath}/${sopath}/${soname%.so}_debug.so : ${sopath}/${MAKEFILE} `find ${sopath} -type f -name "*.c" | tr [:space:] ' '` `find ${sopath} -type f -name "*.h" | tr [:space:] ' '` `find ${sopath} -type f -name "*.cpp" | tr [:space:] ' '`" >> ${MAKEFILE}
+	echo "	cd ${sopath} && \$(MAKER) debug" >> ${MAKEFILE}
+    fi
+done
+
+###############################################################
+
+echo "	生成清理、运行、安装、卸载规则..."
+
+echo ".PHONY : clean cleano cleanmoc cleanso cleantarget distclean cleanold" >> ${MAKEFILE}
+echo "cleanold :" >> ${MAKEFILE}
+echo "	rm \`find -name \"*~\"\` 2> /dev/null || true" >> ${MAKEFILE}
+if [ "$Debug" == "true" ]
+then
+    echo "clean : cleanold cleano cleanmoc cleanso cleantarget cleandebug" >> ${MAKEFILE}
+else
+    echo "clean : cleanold cleano cleanmoc cleanso cleantarget" >> ${MAKEFILE}
+fi
+echo "	for pathname in \`find . -depth \\( ! -regex '.*/\..*' \\) -type d\` ; do if [ \"\`ls -A1 \$\${pathname} | wc -l\`\" = \"0\" ] ; then rmdir \$\${pathname} ; fi ; done" >> ${MAKEFILE}
+echo "cleanmoc :" >> ${MAKEFILE}
+echo "	rm \$(moclist) 2> /dev/null || true" >> ${MAKEFILE}
+echo "cleano :" >> ${MAKEFILE}
+echo "	rm \$(existo) 2> /dev/null || true" >> ${MAKEFILE}
+echo "cleantarget :" >> ${MAKEFILE}
+echo "	rm \$(outpath)/\$(target) 2> /dev/null || true" >> ${MAKEFILE}
+if [ "$Debug" == "true" ]
+then
+    echo ".PHONY : cleandebug" >> ${MAKEFILE}
+    echo "cleandebug :" >> ${MAKEFILE}
+    echo "	rm \$(outpath)/\$(target_debug) 2> /dev/null || true" >> ${MAKEFILE}
+fi
+echo "cleanso :" >> ${MAKEFILE}
+for sopath in ${soarray[@]}
+do
+    echo "	cd ${sopath} && \$(MAKER) clean || true" >> ${MAKEFILE}
+done
+echo "distclean : clean" >> ${MAKEFILE}
+for sopath in ${soarray[@]}
+do
+    echo "	cd ${sopath} && \$(MAKER) distclean || true" >> ${MAKEFILE}
+done
+echo "	rm ${MAKEFILE}" >> ${MAKEFILE}
+if [ "$IfSo" != "true" ] && [ "$Debug" == "true" ]
+then
+    echo ".PHONY : run rundebug" >> ${MAKEFILE}
+    echo "run : debug" >> ${MAKEFILE}
+    echo "	\$(outpath)/\$(target_debug)" >> ${MAKEFILE}
+    echo "rundebug : debug" >> ${MAKEFILE}
+    echo "	\$(DEBUGER) \$(DEBUGER_FLAGS) \$(outpath)/\$(target_debug)" >> ${MAKEFILE}
+fi
+if [ "$noinstall" != "true" ]
+then
+    echo ".PHONY : install uninstall" >> ${MAKEFILE}
+    echo "install : all" >> ${MAKEFILE}
+    echo "	mkdir -p \$(InstallDir)" >> ${MAKEFILE}
+    if [ "$IfSo" == "true" ]
+    then
+	echo "	cp \$(outpath)/\$(target) \$(LIB_DIR)/\$(target)" >> ${MAKEFILE}
+    else
+	echo "	cp \$(outpath)/\$(target) \$(InstallDir)/\$(target)" >> ${MAKEFILE}
+    fi
+    for sopath in ${soarray[@]}
+    do
+	echo "	cd ${sopath} && \$(MAKER) install || true" >> ${MAKEFILE}
+    done
+    for sharedlib in ${sofilelist}
+    do
+	if [ "$sharedlib" == "" ]
+	then
+	    continue
+	fi
+	echo "	mkdir -p /usr/lib/\$(target)" >> ${MAKEFILE}
+	echo "	cp ${sharedlib} /usr/lib/\$(target)/${sharedlib##*/}" >> ${MAKEFILE}
+	echo "	ln -s /usr/lib/\$(target)/${sharedlib##*/} /usr/lib/${sharedlib##*/}" >> ${MAKEFILE}
+    done
+    echo "uninstall :" >> ${MAKEFILE}
+    if [ "$IfSo" == "true" ]
+    then
+	echo "	rm \$(LIB_DIR)/\$(target) &> /dev/null || true" >> ${MAKEFILE}
+    else
+	echo "	rm \$(InstallDir)/\$(target) &> /dev/null || true" >> ${MAKEFILE}	
+    fi
+    echo "	if [ \"\`ls -A1 \$(InstallDir) | wc -l \`\" = \"0\" ] ; then rmdir \$(InstallDir) ; fi" >> ${MAKEFILE}
+    for sopath in ${soarray[@]}
+    do
+	echo "	cd ${sopath} && \$(MAKER) uninstall || true" >> ${MAKEFILE}
+    done
+    for sharedlib in ${sofilelist}
+    do
+	if [ "$sharedlib" == "" ]
+	then
+	    continue
+	fi
+	echo "	rm /usr/lib/\$(target)/${sharedlib##*/}" >> ${MAKEFILE}
+	echo "	rm /usr/lib/${sharedlib##*/}" >> ${MAKEFILE}
+	echo "	if [ \"\`ls -A1 /usr/lib/\$(target) | wc -l \`\" = \"0\" ] ; then rmdir /usr/lib/\$(target) ; fi" >> ${MAKEFILE}
+    done
+fi
+
+if [ "${IfTar}" == "true" ]
+then
+    echo ".PHONY : tar ctar untar" >> ${MAKEFILE}
+    echo "tar : ctar" >> ${MAKEFILE}
+    echo "	\$(TAR) \`for name in \\\`find -type f \\( ! -regex '.*/\\..*' \\)\\\` ; do echo \$\${name#./}; done \` > \$(TAR_NAME)" >> ${MAKEFILE}
+    echo "untar :" >> ${MAKEFILE}
+    echo "	\$(UNTAR) < \$(TAR_NAME)" >> ${MAKEFILE}
+    echo "ctar :" >> ${MAKEFILE}
+    echo "	rm \$(TAR_NAME) 2> /dev/null || true" >> ${MAKEFILE}
+fi
+if [ "${IfNau}" == "true" ]
+then
+    echo ".PHONY : bro" >> ${MAKEFILE}
+    echo "bro :" >> ${MAKEFILE}
+    echo "	\$(BROWSER) ." >> ${MAKEFILE}
+fi
+
+echo "${target}生成规则建立完成"

@@ -1,6 +1,5 @@
 project(gi NONE)
 
-include(CheckAll)
 include(GObjectIntrospection)
 
 check_all_modules(GI_MODULES

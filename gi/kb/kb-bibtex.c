@@ -1,4 +1,5 @@
 #include "kb-bibtex.h"
+#include <glib/gprintf.h>
 
 G_DEFINE_TYPE (KbBibtex, kb_bibtex, G_TYPE_OBJECT);
 
@@ -136,7 +137,7 @@ kb_bibtex_printf (KbBibtex *self)
                   "year",      &year,
                   NULL);
 
-    g_print ("    Title: %s\n"
+    g_printf ("    Title: %s\n"
               "   Author: %s\n"
               "Publisher: %s\n"
               "     Year: %d\n", title, author, publisher, year);

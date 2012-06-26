@@ -25,7 +25,7 @@ testvm_derive_base_init(TestvmDeriveClass *klass)
 {
 }
 
-
+static void
 testvm_derive_class_init(TestvmDeriveClass *klass)
 {
     GObjectClass *base_class = G_OBJECT_CLASS (klass);

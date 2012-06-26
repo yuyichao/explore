@@ -60,7 +60,6 @@ kb_bibtex_get_property (GObject *object, guint property_id,
 {
     KbBibtex *self = KB_BIBTEX (object);
     KbBibtexPrivate *priv = KB_BIBTEX_GET_PRIVATE (self);
-    GString *similar = NULL;
 
     switch (property_id) {
     case PROPERTY_TITLE:
@@ -137,7 +136,7 @@ kb_bibtex_printf (KbBibtex *self)
                   "year",      &year,
                   NULL);
 
-    g_printf ("    Title: %s\n"
+    g_print ("    Title: %s\n"
               "   Author: %s\n"
               "Publisher: %s\n"
               "     Year: %d\n", title, author, publisher, year);

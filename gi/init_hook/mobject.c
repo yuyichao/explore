@@ -5,7 +5,7 @@
 
 static void
 testvm_object_set_property (GObject *object, guint property_id,
-                        const GValue *value, GParamSpec *pspec)
+                            const GValue *value, GParamSpec *pspec)
 {
     printf("%s\n", __func__);
 }
@@ -31,7 +31,7 @@ testvm_object_base_init(TestvmObjectClass *klass)
     klass->self = NULL;
 }
 
-
+static void
 testvm_object_class_init(TestvmObjectClass *klass)
 {
     GObjectClass *base_class = G_OBJECT_CLASS (klass);

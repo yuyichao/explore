@@ -14,9 +14,9 @@ main()
     printf("3\n");
     TestvmDerive *der2 = testvm_derive_new();
     printf("4\n");
-    printf("%lx\n", TESTVM_OBJECT_GET_CLASS(obj1)->self);
-    printf("%lx\n", TESTVM_OBJECT_GET_CLASS(obj2)->self);
-    printf("%lx\n", TESTVM_OBJECT_GET_CLASS(der1)->self);
-    printf("%lx\n", TESTVM_OBJECT_GET_CLASS(der2)->self);
+    printf("%lx\n", (long unsigned)TESTVM_OBJECT_GET_CLASS(obj1)->self);
+    printf("%lx\n", (long unsigned)TESTVM_OBJECT_GET_CLASS(obj2)->self);
+    printf("%lx\n", (long unsigned)TESTVM_OBJECT_GET_CLASS(der1)->self);
+    printf("%lx\n", (long unsigned)TESTVM_OBJECT_GET_CLASS(der2)->self);
     return 0;
 }

@@ -10,3 +10,4 @@ include(CheckAll)
 
 add_subdirectory(gi)
 add_subdirectory(jscore)
+add_subdirectory(preload)

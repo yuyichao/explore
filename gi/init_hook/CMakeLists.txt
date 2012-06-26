@@ -13,5 +13,5 @@ target_link_libraries(init_hook ${GI_MODULES_LINK})
 
 add_executable(run-init-hook main.c)
 target_link_libraries(run-init-hook init_hook)
-wrap_test(test_init_hook
-  ${CMAKE_CURRENT_BINARY_DIR}/run-init-hook)
+add_run(test_init_hook
+  COMMAND ${CMAKE_CURRENT_BINARY_DIR}/run-init-hook)

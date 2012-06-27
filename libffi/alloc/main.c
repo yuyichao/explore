@@ -101,43 +101,68 @@ type_create(unsigned int argc, ...)
     return type_copy(&tmpres);
 }
 
-ffi_cif*
-cif_create(ffi_type *ret_t, unsigned int argc, ...)
+unsigned int
+cif_prep_arg(ffi_type *ret_t, ffi_type **argv,
+             unsigned int argc, va_list ap)
 {
     unsigned int i;
     unsigned int size;
-    ffi_cif *res;
-    va_list ap;
-
-    ffi_type *argv[argc];
-    void *ret_p;
-    void *argv_p;
-    void *arg_p;
 
     size = sizeof(ffi_cif);
-    if (!ret_t)
-        ret_t = &ffi_type_void;
-    size += type_total_size(ret_t) + sizeof(argv);
+    size += type_total_size(ret_t);
+    size += argc * sizeof(ffi_type*);
 
-    va_start(ap, argc);
     for (i = 0;i < argc;i++) {
         argv[i] = va_arg(ap, ffi_type*);
         size += type_total_size(argv[i]);
     }
-    va_end(ap);
+    return size;
+}
+
+void*
+cif_alloc(unsigned int argc, ffi_type *ret_t, va_list ap,
+          void **ret_p, void **argv_p)
+{
+    unsigned int i;
+    ffi_cif *res;
+    void *arg_p;
+    ffi_type *argv[argc];
+    unsigned int size;
+
+    size = cif_prep_arg(ret_t, argv, argc, ap);
 
     res = malloc(size);
     if (!res)
         return NULL;
-    ret_p = res + sizeof(ffi_cif);
-    argv_p = ret_p + type_fill_buff(ret_p, ret_t);
-    arg_p = argv_p + sizeof(argv);
+    *ret_p = res + sizeof(ffi_cif);
+    *argv_p = *ret_p + type_fill_buff(*ret_p, ret_t);
+    arg_p = *argv_p + argc * sizeof(ffi_type*);
     for (i = 0;i < argc;i++) {
-        ((ffi_cif**)argv_p)[i] = arg_p;
+        ((ffi_cif**)*argv_p)[i] = arg_p;
         arg_p += type_fill_buff(arg_p, argv[i]);
     }
     if (!argc)
-        argv_p = NULL;
+        *argv_p = NULL;
+    return res;
+}
+
+ffi_cif*
+cif_create(ffi_type *ret_t, unsigned int argc, ...)
+{
+    ffi_cif *res;
+    va_list ap;
+
+    void *ret_p;
+    void *argv_p;
+
+    if (!ret_t)
+        ret_t = &ffi_type_void;
+    va_start(ap, argc);
+    res = cif_alloc(argc, ret_t, ap, &ret_p, &argv_p);
+    va_end(ap);
+
+    if (!res)
+        return NULL;
     if (ffi_prep_cif(res, FFI_DEFAULT_ABI, argc, ret_p, argv_p) == FFI_OK)
         return res;
     free(res);

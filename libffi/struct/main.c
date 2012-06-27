@@ -11,6 +11,24 @@ typedef struct {
 } my_struct;
 
 void
+print_str(char *str)
+{
+    if (str)
+        printf("%s\n", str);
+    else
+        printf("(null)\n");
+}
+
+void
+print_my_struct(my_struct ms)
+{
+    printf("i: %d\n", ms.i);
+    printf("str: ");
+    print_str(ms.str);
+    printf("j: %d\n", ms.j);
+}
+
+void
 print_type(ffi_type *type)
 {
     if (!type) {
@@ -49,25 +67,45 @@ int
 main()
 {
     ffi_cif cif;
+    ffi_type my_struct_type;
+    ffi_type *my_struct_eles[4] = {
+        &ffi_type_sint,
+        &ffi_type_pointer,
+        &ffi_type_sint,
+        NULL
+    };
     ffi_type *args[1];
     void *values[1];
-    char *s;
+    my_struct ms = {
+        .i = 1,
+        .j = 2,
+        .str = "asdf"
+    };
 
-    args[0] = &ffi_type_pointer;
-    values[0] = &s;
-    printf("ffi_type_pointer:\n");
+    my_struct_type.size = my_struct_type.alignment = 0;
+    my_struct_type.elements = my_struct_eles;
+
+    args[0] = &my_struct_type;
+    values[0] = &ms;
+    printf("\033[31;1mBefore Init\033[0m\n");
+    printf("my_struct_type:\n");
     print_type(args[0]);
     printf("ffi_type_void:\n");
     print_type(&ffi_type_void);
 
     if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, 1,
                      &ffi_type_void, args) == FFI_OK) {
+        printf("\033[31;1mAfter Prep CIF\033[0m\n");
         print_cif(&cif);
-        s = "aaa";
-//        ffi_call(&cif, (fpointer)print_str, NULL, values);
+        printf("\033[32;1mCall First Time\033[0m\n");
+        ffi_call(&cif, (fpointer)print_my_struct, NULL, values);
+        printf("\033[31;1mAfter First Call\033[0m\n");
         print_cif(&cif);
-        s = NULL;
-//        ffi_call(&cif, (fpointer)print_str, NULL, values);
+        ms.str = "Hello";
+        printf("\033[32;1mCall Second Time\033[0m\n");
+        ffi_call(&cif, (fpointer)print_my_struct, NULL, values);
+        printf("\033[31;1mAfter Second Call\033[0m\n");
+        print_cif(&cif);
     }
     return 0;
 }

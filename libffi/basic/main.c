@@ -71,7 +71,6 @@ main()
         print_cif(&cif);
         s = NULL;
         ffi_call(&cif, (fpointer)print_str, NULL, values);
-        print_cif(&cif);
     }
     return 0;
 }

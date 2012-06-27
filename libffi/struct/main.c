@@ -39,6 +39,7 @@ print_type(ffi_type *type)
     printf("\tsize: %lu\n", type->size);
     printf("\talignment: %u\n", (unsigned)type->alignment);
     printf("\ttype: %u\n", (unsigned)type->type);
+    printf("\telements: %lx\n", (unsigned long)type->elements);
 }
 
 void

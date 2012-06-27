@@ -3,3 +3,4 @@ check_all_modules(LIBFFI
   )
 
 add_subdirectory(basic)
+add_subdirectory(struct)

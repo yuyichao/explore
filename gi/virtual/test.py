@@ -23,10 +23,12 @@ from gi.repository import Testvm
 #     obj.real_wrapper2()
 
 class EE(Testvm.Object):
-    def do_s_method(self):
+    @staticmethod
+    def do_s_method():
         print("overloaded do_s_method")
-    def s_method(self):
+    @staticmethod
+    def s_method():
         print("overloaded s_method")
 
-obj = Testvm.Object()
+obj = EE()
 obj.real_s_method()

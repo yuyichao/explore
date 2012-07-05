@@ -27,6 +27,7 @@ struct _TestvmObjectClass {
     GObjectClass parent_class;
     int *(*ret_ary)(TestvmObject *self, int *n);
     void (*ret_two)(TestvmObject *self, int *i, int *j);
+    void (*arg_buff)(TestvmObject *self, int n, gchar *buff);
 };
 
 #ifdef __cplusplus
@@ -35,6 +36,7 @@ extern "C" {
     GType testvm_object_get_type();
     TestvmObject *testvm_object_new();
     void testvm_object_print(TestvmObject *mobj);
+    void testvm_print_array(int n, gchar **ary);
 #ifdef __cplusplus
 }
 #endif

@@ -80,7 +80,7 @@ testvm_object_new()
  * TestvmObjectClass::ret_ary:
  * @self: (transfer none) (allow-none):
  * @n: (out) (allow-none):
-  *
+ *
  * Returns: (transfer full) (array length=n) (element-type int):
  **/
 
@@ -89,6 +89,13 @@ testvm_object_new()
  * @self: (transfer none) (allow-none):
  * @i: (out) (allow-none):
  * @j: (out) (allow-none):
+ **/
+
+/**
+ * TestvmObjectClass::arg_buff:
+ * @self: (transfer none) (allow-none):
+ * @n:
+ * @buff: (allow-none) (transfer none) (element-type guint8) (array length=n):
  **/
 
 void
@@ -131,5 +138,22 @@ testvm_object_print(TestvmObject *mobj)
         printf("i: %d, j: %d\n", i, j);
     } else {
         printf("ret_two is NULL\n");
+    }
+    if (klass->arg_buff) {
+        klass->arg_buff(mobj, 10, "0123456789");
+    }
+}
+
+/**
+ * testvm_print_array:
+ * @n:
+ * @ary: (transfer none) (array length=n) (element-type utf8) (allow-none):
+ **/
+void
+testvm_print_array(int n, gchar **ary)
+{
+    int i;
+    for (i = 0;i < n;i++) {
+        print_str(ary[i]);
     }
 }

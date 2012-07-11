@@ -21,7 +21,7 @@ macro(_gir_list_prefix _newlist _list _prefix)
   endforeach()
 endmacro()
 
-function(__GET_UNIQUE_TARGET_NAME _name _unique_name)
+function(__GIR_GET_UNIQUE_TARGET_NAME _name _unique_name)
    set(propertyName "_GOBJECT_INTROSPECTION_UNIQUE_COUNTER_${_name}")
    get_property(currentCounter GLOBAL PROPERTY "${propertyName}")
    if(NOT currentCounter)
@@ -215,7 +215,7 @@ function(gobject_introspection _FIRST_ARG)
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
 
-  __get_unique_target_name(gobject_introspection_compile_target
+  __gir_get_unique_target_name(gobject_introspection_compile_target
     _gir_compile_target)
   add_custom_target(${_gir_compile_target} ALL DEPENDS ${GIR_TYPELIB})
 endfunction()

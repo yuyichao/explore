@@ -37,6 +37,10 @@ main(int argc, char **argv)
                       -1, "<main>", NULL, NULL);
     PyRun_SimpleString("from gi.repository import Foo\n"
                        "Foo.hello('python')\n");
+    FILE *py_file;
+    const char *py_fname = getenv("PYTHON_FILE");
+    py_file = fopen(py_fname, "r");
+    PyRun_SimpleFile(py_file, py_fname);
     Py_Finalize();
     return 0;
 }

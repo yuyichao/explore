@@ -8,13 +8,14 @@
 
 /**
  * foo_hello:
+ * @str: (allow-none) (tranfer none):
  *
  * test
  */
 void
-foo_hello()
+foo_hello(const char *str)
 {
-    printf("%s\n", __func__);
+    printf("%s, %s\n", __func__, str);
 }
 
 int
@@ -31,8 +32,6 @@ main(int argc, char **argv)
 
     PyRun_SimpleString("from time import time,ctime\n"
                        "print('Today is',ctime(time()))\n");
-    PyRun_SimpleString("from gi.repository import Foo\n"
-                       "Foo.hello()\n");
     GjsContext *gjs_ctx = gjs_context_new_with_search_path(js_path);
     gjs_context_eval (gjs_ctx,
                       "const Main = imports.main; Main.start();",
@@ -40,6 +39,8 @@ main(int argc, char **argv)
                       "<main>",
                       NULL,
                       NULL);
+    PyRun_SimpleString("from gi.repository import Foo\n"
+                       "Foo.hello('python')\n");
     Py_Finalize();
     return 0;
 }

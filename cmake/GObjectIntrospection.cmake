@@ -121,7 +121,7 @@ function(gobject_introspection _FIRST_ARG)
 
   # if program has been set, we prepend --program= on to it
   if(GIR_PROGRAM)
-    set(GIR_PROGRAM "--program=${GIR_PROGRAM}")
+    set(GIR_REAL_PROGRAM "--program=${GIR_PROGRAM}")
   endif()
 
   # if program_arg has been set, we prepend --program-arg= on to it
@@ -184,7 +184,7 @@ function(gobject_introspection _FIRST_ARG)
     ${GIR_REAL_CFLAGS}
     ${GIR_FORMAT}
     ${GIR_REAL_LIBRARY}
-    ${GIR_PROGRAM} ${GIR_PROGRAM_ARGS}
+    ${GIR_REAL_PROGRAM} ${GIR_PROGRAM_ARGS}
     ${GIR_QUIET} ${GIR_VERBOSE}
     ${GIR_REAL_IDENTIFIER_PREFIXES}
     ${GIR_REAL_SYMBOL_PREFIXES}
@@ -198,7 +198,7 @@ function(gobject_introspection _FIRST_ARG)
     ${GIR_SOURCES}
     ${GIR_REAL_BUILT_SOURCES}
     OUTPUT ${GIR_FILENAME}
-    DEPENDS ${GIR_LIBRARY}
+    DEPENDS ${GIR_LIBRARY} ${GIR_PROGRAM}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     VERBATIM
     )

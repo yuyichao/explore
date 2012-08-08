@@ -30,8 +30,8 @@ main(int argc, char **argv)
     g_option_context_add_group(ctx, g_irepository_get_option_group());
     g_option_context_parse(ctx, &argc, &argv, NULL);
 
-    PyRun_SimpleString("from time import time,ctime\n"
-                       "print('Today is',ctime(time()))\n");
+    PyRun_SimpleString("from time import time, ctime\n"
+                       "print('Today is', ctime(time()))\n");
     GjsContext *gjs_ctx = gjs_context_new_with_search_path(js_path);
     gjs_context_eval(gjs_ctx, "const Main = imports.main; Main.start();",
                       -1, "<main>", NULL, NULL);

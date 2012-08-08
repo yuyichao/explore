@@ -33,12 +33,8 @@ main(int argc, char **argv)
     PyRun_SimpleString("from time import time,ctime\n"
                        "print('Today is',ctime(time()))\n");
     GjsContext *gjs_ctx = gjs_context_new_with_search_path(js_path);
-    gjs_context_eval (gjs_ctx,
-                      "const Main = imports.main; Main.start();",
-                      -1,
-                      "<main>",
-                      NULL,
-                      NULL);
+    gjs_context_eval(gjs_ctx, "const Main = imports.main; Main.start();",
+                      -1, "<main>", NULL, NULL);
     PyRun_SimpleString("from gi.repository import Foo\n"
                        "Foo.hello('python')\n");
     Py_Finalize();

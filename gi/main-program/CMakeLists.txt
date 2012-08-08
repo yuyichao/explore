@@ -1,0 +1,38 @@
+project(gi.main-program C)
+
+check_all_modules(GI_MAIN_MODULES
+  GIR REQUIRED gobject-introspection-1.0
+  GJS REQUIRED gjs-1.0)
+find_package(PythonLibrary REQUIRED)
+
+include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${GI_MODULES_INCLUDE_DIRS}
+  ${GI_MAIN_MODULES_INCLUDE_DIRS} ${PYTHON_INCLUDE_PATH})
+link_directories(${GI_MODULES_LINK_DIRS} ${GI_MAIN_MODULES_LINK_DIRS})
+add_definitions(${GI_MODULES_FLAGS} ${GI_MAIN_MODULES_FLAGS})
+
+set(LIB_MAIN_PROGRAM_SOURCES
+  foo.c)
+set(LIB_MAIN_PROGRAM_HEADERS
+  foo.h)
+
+add_executable(gi_main ${LIB_MAIN_PROGRAM_SOURCES})
+target_link_libraries(gi_main ${GI_MODULES_LINK} ${GI_MAIN_MODULES_LINK}
+  ${PYTHON_LIBRARY})
+
+gobject_introspection(
+  FILENAME Foo-0.1.gir
+  NSVERSION 0.1
+  PROGRAM ${CMAKE_CURRENT_BINARY_DIR}/gi_main
+  INCLUDE GObject-2.0 GLib-2.0
+  PACKAGE_EXPORT foo
+  SCANNER_ARGS --warn-all --add-include-path=${CMAKE_CURRENT_SOURCE_DIR}
+  COMPILER_ARGS "--includedir=${CMAKE_CURRENT_SOURCE_DIR}"
+  SYMBOL_PREFIXES foo
+  SOURCES ${LIB_MAIN_PROGRAM_SOURCES} ${LIB_MAIN_PROGRAM_HEADERS}
+  VERBOSE
+  )
+
+add_run(test_gi_main COMMAND GI_TYPELIB_PATH=${CMAKE_CURRENT_BINARY_DIR}
+  LD_LIBRARY_PATH=${CMAKE_CURRENT_BINARY_DIR}
+  JS_PATH=${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_CURRENT_BINARY_DIR}/gi_main)

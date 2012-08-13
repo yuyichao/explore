@@ -9,6 +9,7 @@ add_definitions("-D_GNU_SOURCE")
 include(CheckAll)
 
 add_subdirectory(gi)
+add_subdirectory(gdk)
 add_subdirectory(jscore)
 add_subdirectory(preload)
 add_subdirectory(libffi)

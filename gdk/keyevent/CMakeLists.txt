@@ -22,4 +22,5 @@ target_link_libraries(test_keyevent ${KE_MAIN_LINK})
 add_run(run_gdk_keyevent
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   COMMAND "LD_PRELOAD=${CMAKE_CURRENT_BINARY_DIR}/libkeyevent.so"
+  "GTK_IM_MODULE=xim"
   "${CMAKE_CURRENT_BINARY_DIR}/test_keyevent")

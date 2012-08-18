@@ -6,19 +6,24 @@
 
 static GdkEventFunc real_event_handler = NULL;
 
-void
+static void
+print_keyevent(GdkEventKey *kevent)
+{
+    printf("%s: ", kevent->type == GDK_KEY_PRESS ? "press" : "release");
+    printf("from %lx\n", (gulong)kevent->window);
+    printf("send: %s, ", kevent->send_event ? "true" : "false");
+    printf("time: %u\n", kevent->time);
+    printf("state: %u, ", kevent->state);
+    printf("keyval: %u, ", kevent->keyval);
+    printf("hardware_keycode: %u, ", (guint)kevent->hardware_keycode);
+    printf("is_modifier: %s\n\n", kevent->is_modifier ? "true" : "false");
+}
+
+static void
 event_proxy(GdkEvent *event, gpointer data)
 {
     if (event->type == GDK_KEY_PRESS || event->type == GDK_KEY_RELEASE) {
-        GdkEventKey *kevent = (GdkEventKey*)event;
-        printf("%s: ", kevent->type == GDK_KEY_PRESS ? "press" : "release");
-        printf("from %lx\n", (gulong)kevent->window);
-        printf("send: %s, ", kevent->send_event ? "true" : "false");
-        printf("time: %u\n", kevent->time);
-        printf("state: %u, ", kevent->state);
-        printf("keyval: %u, ", kevent->keyval);
-        printf("hardware_keycode: %u, ", (guint)kevent->hardware_keycode);
-        printf("is_modifier: %s\n\n", kevent->is_modifier ? "true" : "false");
+        print_keyevent((GdkEventKey*)event);
     }
     if (real_event_handler)
         real_event_handler(event, data);

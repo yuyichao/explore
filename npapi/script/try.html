@@ -1,0 +1,25 @@
+<html>
+<head>
+<script>
+function bodyonload() {
+embed = document.createElement("embed");
+embed.width = "0";
+embed.height = "0";
+embed.type = "test/x-open-with-default-plugin";
+(document.body).appendChild(embed);
+}
+function run() {
+    var plugin = embed;//document.getElementById('pluginId');
+    ret = plugin.open("aaa");
+    console.log(ret);
+    ret = plugin.open("俞颐超");
+    console.log(ret);
+    ret = plugin.rstr("aaa");
+    console.log(ret);
+}
+</script>
+</head>
+<body onload="bodyonload()">
+<button onclick="run()">run</button>
+</body>
+</html>

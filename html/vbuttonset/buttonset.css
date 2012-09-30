@@ -1,0 +1,26 @@
+.srt-vbuttonset {
+    margin-bottom: 7px;
+    padding: 0;
+}
+.srt-vbuttonset.ui-menu {
+    margin-bottom: 0;
+    padding: 0;
+}
+.srt-vbuttonset .ui-button {
+    margin-top: 0;
+    margin-bottom: -.3em;
+}
+.srt-vbuttonset .ui-button.srt-button-last {
+    margin-bottom: 0;
+}
+.srt-vbuttonset.ui-menu .ui-button {
+    margin-left: 0;
+    margin-right: 0;
+    width: 100%;
+}
+.srt-menu {
+    float: left;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 3px;
+}

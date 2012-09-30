@@ -67,6 +67,7 @@ main() {
         XNextEvent(disp, &report);
         if (process_xfixes(&report))
             continue;
+        printf("%s, unknown type %d\n", __func__, report.type);
     }
     return 0;
 }

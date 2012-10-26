@@ -15,6 +15,12 @@ process_xfixes_selection(XFixesSelectionNotifyEvent *xfixes_event)
     switch (xfixes_event->subtype) {
     case XFixesSetSelectionOwnerNotify:
         printf("%s, XFixesSetSelectionOwnerNotify\n", __func__);
+        {
+            Window owner = XGetSelectionOwner(xfixes_event->display,
+                                              xfixes_event->selection);
+            if (owner == None)
+                break;
+        }
         break;
     case XFixesSelectionWindowDestroyNotify:
         printf("%s, XFixesSelectionWindowDestroyNotify\n", __func__);
@@ -24,7 +30,7 @@ process_xfixes_selection(XFixesSelectionNotifyEvent *xfixes_event)
         break;
     }
     char *name = XGetAtomName(xfixes_event->display, xfixes_event->selection);
-    printf("%s\n", name);
+    printf("%s, %d\n", name, (int)xfixes_event->selection);
     XFree(name);
 }
 
@@ -46,8 +52,11 @@ main() {
     Display *disp = XOpenDisplay(NULL);
     Atom primary = XInternAtom(disp, "PRIMARY", False);
     Atom clipboard = XInternAtom(disp, "CLIPBOARD", False);
-    Window win = XCreateSimpleWindow(disp, DefaultRootWindow(disp),
-                                     0, 0, 1, 1, 0, 0, 0);
+    Window root = DefaultRootWindow(disp);
+    Window win;
+    /* win = XCreateSimpleWindow(disp, root, 0, 0, 1, 1, 0, 0, 0); */
+    win = XCreateWindow(disp, root, 0, 0, 1, 1, 0, 0, InputOnly,
+                        CopyFromParent, 0, NULL);
     int ignore;
     XEvent report;
     XFixesSelectSelectionInput(disp, win, primary,

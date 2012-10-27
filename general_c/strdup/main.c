@@ -91,5 +91,40 @@ main()
     t = ((end.tv_sec - start.tv_sec) * 1000000000)
         + end.tv_nsec - start.tv_nsec;
     printf("%s, if+malloc+memcpy:\n\t %lld\n", __func__, t);
+
+    clock_gettime(CLOCK_ID, &start);
+    for (i = 0;i < N;i++) {
+        for (j = 0;j < strnum;j++) {
+            p = my_strndup2(strs[j], str_lens[j]);
+            free(p);
+        }
+    }
+    clock_gettime(CLOCK_ID, &end);
+    t = ((end.tv_sec - start.tv_sec) * 1000000000)
+        + end.tv_nsec - start.tv_nsec;
+    printf("%s, inline-realloc+memcpy:\n\t %lld\n", __func__, t);
+
+    clock_gettime(CLOCK_ID, &start);
+    for (i = 0;i < N;i++) {
+        for (j = 0;j < strnum;j++) {
+            nop(NULL, strs[j], str_lens[j]);
+            nop(NULL, strs[j], str_lens[j]);
+        }
+    }
+    clock_gettime(CLOCK_ID, &end);
+    t = ((end.tv_sec - start.tv_sec) * 1000000000)
+        + end.tv_nsec - start.tv_nsec;
+    printf("%s, nop*2:\n\t %lld\n", __func__, t);
+
+    clock_gettime(CLOCK_ID, &start);
+    for (i = 0;i < N;i++) {
+        for (j = 0;j < strnum;j++) {
+            nop(NULL, strs[j], str_lens[j]);
+        }
+    }
+    clock_gettime(CLOCK_ID, &end);
+    t = ((end.tv_sec - start.tv_sec) * 1000000000)
+        + end.tv_nsec - start.tv_nsec;
+    printf("%s, nop:\n\t %lld\n", __func__, t);
     return 0;
 }

@@ -24,6 +24,15 @@ my_strndup1(const char *str, size_t n)
 }
 
 char*
+my_strndup2(const char *str, size_t n)
+{
+    char *res = realloc(NULL, n + 1);
+    memcpy(res, str, n);
+    res[n] = '\0';
+    return res;
+}
+
+char*
 my_setstr(char *res, const char *str, size_t n)
 {
     res = realloc(res, n + 1);
@@ -43,4 +52,10 @@ my_setstr2(char *res, const char *str, size_t n)
     memcpy(res, str, n);
     res[n] = '\0';
     return res;
+}
+
+char*
+nop(char *res, const char *str, size_t n)
+{
+    return NULL;
 }

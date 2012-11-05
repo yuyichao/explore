@@ -28,3 +28,11 @@ set(value 3 4 5)
 set_property_list(source custom_property1 ${value})
 get_property_list(source custom_property1 prop)
 message("${prop}")
+
+foreach(a RANGE 3)
+  message("x${a}x")
+endforeach()
+
+foreach(a RANGE 1 3)
+  message("x${a}x")
+endforeach()

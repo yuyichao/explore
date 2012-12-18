@@ -1,5 +1,7 @@
 project(gi NONE)
 
+return()
+
 include(GObjectIntrospection)
 
 check_all_modules(GI_MODULES

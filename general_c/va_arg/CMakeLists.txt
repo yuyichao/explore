@@ -1,5 +1,7 @@
 project(general_c.va_arg C)
 
+return()
+
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 set(VA_ARG_SOURCES

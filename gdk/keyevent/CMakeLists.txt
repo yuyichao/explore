@@ -6,8 +6,8 @@ check_all_modules(KE_MAIN
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${KE_MAIN_INCLUDE_DIRS})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${GDK_MODULES_INCLUDE_DIRS})
-add_definitions(${KE_MAIN_FLAGS})
-add_definitions(${GDK_MODULES_FLAGS})
+# add_definitions(${KE_MAIN_FLAGS})
+# add_definitions(${GDK_MODULES_FLAGS})
 
 set(LIB_KEYEVENT_SOURCES
   event.c)

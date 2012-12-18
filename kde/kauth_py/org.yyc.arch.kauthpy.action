@@ -1,0 +1,9 @@
+[org.yyc.arch.kauthpy.action1]
+Name=Action 1
+Description=Action 1
+Policy=auth_admin
+Persistence=always
+
+[Domain]
+Name=KAuth with python
+URL=http://yyc-arch.org

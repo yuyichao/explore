@@ -7,12 +7,12 @@ static int sizes[] = { 4, 40, 400, 80, 8, 80, 800, 160, 16 };
 
 //#define CLOCK_ID CLOCK_PROCESS_CPUTIME_ID
 #define CLOCK_ID CLOCK_MONOTONIC
+void *p = NULL;
 
 int
 main()
 {
-    void *p = NULL;
-    int i, j;
+    unsigned int i, j;
     struct timespec start, end;
     long long t;
     clock_gettime(CLOCK_ID, &start);

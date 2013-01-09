@@ -4,7 +4,9 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 set(SOURCES
   lib.c
-  main.c)
+  lib.cpp
+  main.cpp
+  )
 
 add_executable(c_memcpy ${SOURCES})
 target_link_libraries(c_memcpy rt)

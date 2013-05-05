@@ -1,2 +1,5 @@
 add_subdirectory(properties)
 add_subdirectory(args)
+add_subdirectory(watch)
+add_subdirectory(write)
+add_subdirectory(custom)

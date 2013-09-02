@@ -1,0 +1,65 @@
+<html>
+  <head>
+    <title>CSV Web Plugin</title>
+    <script type="text/javascript">
+      function fillInForm(form, name, address, quantity) {
+          var nameElement = document.getElementById(form + "_name");
+          var addressElement = document.getElementById(form + "_address");
+          var quantityElement = document.getElementById(form + "_quantity");
+          nameElement.value = name;
+          addressElement.value = address;
+          quantityElement.value = quantity;
+      }
+    </script>
+  </head>
+  <body>
+    <h1>CSV Web Plugin</h1>
+    <p>
+      This plugin displays comma-separated value (CSV) files in Web pages using
+      a table widget.
+    </p>
+    <object type="text/csv;header=present;charset=utf8"
+            data="data/accounts.csv"
+            width="100%" height="300"
+            id="csv-view">
+      <param name="related" value="customers"></param>
+    </object>
+    <script type="text/javascript">
+      var csv_view = document.getElementById('csv-view');
+      for (var key in csv_view) {
+          document.write('' + key + ': ' + csv_view[key], ' (',
+                         csv_view.hasOwnProperty(key) + ')<br/>');
+      }
+      document.write('' + 'custom_property' + ': ' + csv_view['custom_property'],
+                     ' (', csv_view.hasOwnProperty('custom_property') + ')<br/>');
+    </script>
+    <p>
+      The table above shows some sample data rendered by the plugin.
+    </p>
+    <p>
+      The fields below are stored in a typical Web form that can be updated by
+      selecting a row in the table above.
+    </p>
+    <form>
+      <table>
+        <tr>
+          <th>Name:</th>
+          <td>
+            <input id="customers_name" name="name" size="50" type="text"/>
+          </td>
+        </tr><tr>
+          <th>Address:</th>
+          <td>
+            <input id="customers_address" name="address" size="50" type="text"/>
+          </td>
+        </tr><tr>
+          <th>Quantity:</th>
+          <td>
+            <input id="customers_quantity" name="quantity" size="50" type="text"/>
+          </td>
+        </tr><tr>
+          <th></th><td><input type="submit" value="Submit"></input></td>
+        </tr>
+    </form>
+  </body>
+</html>

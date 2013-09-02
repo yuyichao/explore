@@ -14,16 +14,24 @@
 static NPNetscapeFuncs *browser;
 
 NP_EXPORT(NPError)
-NP_Initialize(NPNetscapeFuncs *bFuncs, NPPluginFuncs *pFuncs)
+NP_GetEntryPoints(NPPluginFuncs *pFuncs)
 {
     pname();
-    browser = bFuncs;
 
-    if (pFuncs->size < (offsetof(NPPluginFuncs, setvalue) + sizeof(void*)))
+    printf("version: %d, size: %d\n",
+           (int)pFuncs->version, (int)pFuncs->size);
+
+    size_t size_needed = (offsetof(NPPluginFuncs, setvalue) + sizeof(void*));
+
+    if (pFuncs->size < size_needed)
         return NPERR_INVALID_FUNCTABLE_ERROR;
 
     pFuncs->version = 11;
-    pFuncs->size = sizeof(pFuncs);
+    pFuncs->size = size_needed;
+
+    printf("version: %d, size: %d\n",
+           (int)pFuncs->version, (int)pFuncs->size);
+
     pFuncs->newp = NPP_New;
     pFuncs->destroy = NPP_Destroy;
     pFuncs->setwindow = NPP_SetWindow;
@@ -35,10 +43,20 @@ NP_Initialize(NPNetscapeFuncs *bFuncs, NPPluginFuncs *pFuncs)
     pFuncs->print = NPP_Print;
     pFuncs->event = NPP_HandleEvent;
     pFuncs->urlnotify = NPP_URLNotify;
+    pFuncs->javaClass = 0;
     pFuncs->getvalue = NPP_GetValue;
     pFuncs->setvalue = NPP_SetValue;
 
     return NPERR_NO_ERROR;
+}
+
+NP_EXPORT(NPError)
+NP_Initialize(NPNetscapeFuncs *bFuncs, NPPluginFuncs *pFuncs)
+{
+    pname();
+    browser = bFuncs;
+
+    return NP_GetEntryPoints(pFuncs);
 }
 
 NP_EXPORT(char*)

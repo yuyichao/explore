@@ -1,1 +1,2 @@
 add_subdirectory(glob_obj)
+add_subdirectory(circular_import)

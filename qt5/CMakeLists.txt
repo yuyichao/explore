@@ -12,3 +12,5 @@ find_package(Qt5Quick REQUIRED)
 
 add_subdirectory(webplugin)
 add_subdirectory(quick_control)
+add_subdirectory(property)
+add_subdirectory(translucent-gl)

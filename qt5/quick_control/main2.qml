@@ -106,81 +106,6 @@ ApplicationWindow {
         onTriggered: activeFocusItem.paste()
     }
 
-    ExclusiveGroup {
-        id: textFormatGroup
-
-        Action {
-            id: a1
-            text: "Align &Left"
-            checkable: true
-            Component.onCompleted: checked = true
-        }
-
-        Action {
-            id: a2
-            text: "&Center"
-            checkable: true
-        }
-
-        Action {
-            id: a3
-            text: "Align &Right"
-            checkable: true
-        }
-    }
-
-    ChildWindow {
-        id: window1
-    }
-
-    Menu {
-        id: editmenu
-        MenuItem { action: cutAction }
-        MenuItem { action: copyAction }
-        MenuItem { action: pasteAction }
-        MenuSeparator {}
-        Menu {
-            title: "Text &Format"
-            MenuItem { action: a1 }
-            MenuItem { action: a2 }
-            MenuItem { action: a3 }
-            MenuSeparator { }
-            MenuItem { text: "Allow &Hyphenation"; checkable: true }
-        }
-        Menu {
-            title: "Font &Style"
-            MenuItem { text: "&Bold"; checkable: true }
-            MenuItem { text: "&Italic"; checkable: true }
-            MenuItem { text: "&Underline"; checkable: true }
-        }
-    }
-
-    toolBar: ToolBar {
-        id: toolbar
-        RowLayout {
-            id: toolbarLayout
-            spacing: 0
-            width: parent.width
-            ToolButton {
-                iconSource: "images/window-new.png"
-                onClicked: window1.visible = !window1.visible
-                Accessible.name: "New window"
-                tooltip: "Toggle visibility of the second window"
-            }
-            ToolButton { action: openAction }
-            ToolButton {
-                iconSource: "images/document-save-as.png"
-                tooltip: "(Pretend to) Save as..."
-            }
-            Item { Layout.fillWidth: true }
-            CheckBox {
-                id: enabledCheck
-                text: "Enabled"
-                checked: true
-            }
-        }
-    }
-
     menuBar: MenuBar {
         Menu {
             title: "&File"
@@ -321,43 +246,6 @@ ApplicationWindow {
                 title: "Me Neither"
                 visible: false
             }
-        }
-    }
-
-
-    SystemPalette {id: syspal}
-    color: syspal.window
-    ListModel {
-        id: choices
-        ListElement { text: "Banana" }
-        ListElement { text: "Orange" }
-        ListElement { text: "Apple" }
-        ListElement { text: "Coconut" }
-    }
-
-    TabView {
-        id:frame
-        enabled: enabledCheck.checked
-        tabPosition: controlPage.item ? controlPage.item.tabPosition : Qt.TopEdge
-        anchors.fill: parent
-        anchors.margins: Qt.platform.os === "osx" ? 12 : 2
-
-        Tab {
-            id: controlPage
-            title: "Controls"
-            Controls { }
-        }
-        Tab {
-            title: "Itemviews"
-            ModelView { }
-        }
-        Tab {
-            title: "Styles"
-            Styles { anchors.fill: parent }
-        }
-        Tab {
-            title: "Layouts"
-            Layouts { anchors.fill:parent }
         }
     }
 }

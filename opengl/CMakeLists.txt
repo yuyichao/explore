@@ -7,4 +7,4 @@ check_all_modules(GL_MODULES
 include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${GL_MODULES_INCLUDE_DIRS})
 add_definitions(${GL_MODULES_FLAGS})
 
-add_subdirectory(simple)
+# add_subdirectory(simple)

@@ -1,2 +1,2 @@
-find_package(NPAPI REQUIRED)
+# find_package(NPAPI REQUIRED)
 # add_subdirectory(script)

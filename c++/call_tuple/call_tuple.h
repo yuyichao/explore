@@ -19,7 +19,7 @@ struct gens<0, S...> {
 
 template<typename Function, int... S, typename... Arg2>
 static inline auto
-_call_func(Function func, seq<S...>, std::tuple<Arg2...> &&args)
+_call_func(Function func, seq<S...>, std::tuple<Arg2...> &args)
     -> decltype(func(std::forward<Arg2>(std::get<S>(args))...))
 {
     return func(static_cast<Arg2&&>(std::get<S>(args))...);
@@ -30,11 +30,10 @@ static inline auto
 call_tuple(Function &&func, T args)
     -> decltype(_call_func(std::forward<Function>(func),
                            typename gens<std::tuple_size<T>::value>::type(),
-                           std::move(args)))
+                           args))
 {
     return _call_func(std::forward<Function>(func),
-                      typename gens<std::tuple_size<T>::value>::type(),
-                      std::move(args));
+                      typename gens<std::tuple_size<T>::value>::type(), args);
 }
 
 #endif

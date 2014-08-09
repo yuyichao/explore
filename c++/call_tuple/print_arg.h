@@ -1,5 +1,7 @@
 #include "utils.h"
 
+#include <iostream>
+
 #ifndef __PRINT_ARG_H__
 #define __PRINT_ARG_H__
 

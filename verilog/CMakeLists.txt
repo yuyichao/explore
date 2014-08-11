@@ -5,8 +5,10 @@ function(verilog_compile target ifile)
   endif()
   add_custom_command(OUTPUT "${ofile}"
     COMMAND iverilog "-o${ofile}" "${ifile}"
-    DEPENDS "${ifile}")
+    DEPENDS "${ifile}" WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
   add_custom_target("${target}" ALL DEPENDS "${ofile}")
 endfunction()
 
 verilog_compile(arbiter arbiter.v)
+verilog_compile(addbit addbit.v)
+verilog_compile(adder_hier adder_hier.v)

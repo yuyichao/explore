@@ -1,5 +1,4 @@
 module arbiter (clock, reset, req_0, req_1, gnt_0, gnt_1);
-
    input clock, reset, req_0, req_1;
    output gnt_0, gnt_1;
 

@@ -1,2 +1,3 @@
 add_subdirectory(call_tuple)
 add_subdirectory(template_template)
+add_subdirectory(extern_template)

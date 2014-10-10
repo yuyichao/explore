@@ -1,2 +1,3 @@
 add_subdirectory(glob_obj)
 add_subdirectory(circular_import)
+add_subdirectory(opencl_buffer_addr)

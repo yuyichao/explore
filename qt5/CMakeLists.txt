@@ -9,6 +9,7 @@ find_package(Qt5Sql REQUIRED)
 find_package(Qt5Network REQUIRED)
 find_package(Qt5Qml REQUIRED)
 find_package(Qt5Quick REQUIRED)
+find_package(Qt5OpenGL REQUIRED)
 
 add_subdirectory(webplugin)
 add_subdirectory(quick_control)

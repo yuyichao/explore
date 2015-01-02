@@ -25,3 +25,5 @@ end
 @time_forward forward_kw(f)
 @time_forward do_sth("a", "b", "c")
 @time_forward do_sth(1, 2, 3)
+@time_forward do_sth(1.2, 2.3, 3.4)
+@time_forward (do_sth(1, 2, 3); do_sth(1.2, 2.3, 3.4))

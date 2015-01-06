@@ -1,15 +1,15 @@
 #!/usr/bin/julia
 
 function f(a::Any, b::Any)
-    global c = a + b
+    global c = a + b * 2
 end
 
 function f(a::Integer, b::Integer)
-    global c = a + b
+    global c = a + b * 3
 end
 
 function f(a::Int, b::Int)
-    global c = a + b
+    global c = a + b * 4
 end
 
 macro timing(ex)
@@ -32,6 +32,22 @@ end
 
 function call_int()
     f(1, 2)
+end
+
+const f_any = (@which f(1.2, 3.4)).func
+const f_integer = (@which f(Int32(1), Int32(2))).func
+const f_int = (@which f(1, 2)).func
+
+function meth_any()
+    f_any(1.2, 3.4)
+end
+
+function meth_integer()
+    f_integer(Int32(1), Int32(2))
+end
+
+function meth_int()
+    f_int(1, 2)
 end
 
 function invoke_any()
@@ -57,6 +73,10 @@ end
 @timing call_any()
 @timing call_integer()
 @timing call_int()
+println()
+@timing meth_any()
+@timing meth_integer()
+@timing meth_int()
 println()
 @timing invoke_any()
 @timing invoke_integer()

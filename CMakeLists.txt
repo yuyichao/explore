@@ -8,6 +8,8 @@ set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wno-sign-compare -Wno-unused-parameter ${CMA
 add_definitions("-D_GNU_SOURCE")
 include(CheckAll)
 
+message("x${NON_EXISTING_VAR}x")
+
 add_subdirectory(gi)
 add_subdirectory(gdk)
 add_subdirectory(jscore)

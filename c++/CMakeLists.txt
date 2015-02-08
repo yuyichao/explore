@@ -1,3 +1,5 @@
 add_subdirectory(call_tuple)
 add_subdirectory(template_template)
 add_subdirectory(extern_template)
+add_subdirectory(unresolved_member)
+add_subdirectory(unique_ptr_copy)

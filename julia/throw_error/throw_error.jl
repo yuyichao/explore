@@ -8,16 +8,6 @@ end
 @noinline throw_interp(typ::Any, arg1, arg2) =
     @throw_interp(typ, arg1, arg2)
 
-function time_func(f::Function, args...)
-    println(f)
-    f(args...)
-    gc()
-    @time for i in 1:100000000
-        f(args...)
-    end
-    gc()
-end
-
 function f0(a, b)
     if b === 0
         a
@@ -53,6 +43,26 @@ function f4(a, b)
     a
 end
 
+macro time_func(f, _args...)
+    quote
+        const args = $(Expr(:tuple, _args...))
+        function wrapper()
+            $(Expr(:meta, :noinline))
+            $f(args...)
+        end
+        function timing_wrapper()
+            println($f)
+            wrapper()
+            gc()
+            @time for i in 1:1000000000
+                wrapper()
+            end
+            gc()
+        end
+        timing_wrapper()
+    end
+end
+
 @code_llvm f0(0, 1)
 @code_llvm f1(0, 1)
 @code_llvm f2(0, 1)
@@ -62,9 +72,9 @@ end
 v = Base.svec(1, 2)
 @code_llvm getindex(v, 1)
 
-time_func(f0, 0, 1)
-time_func(f1, 0, 1)
-time_func(f2, 0, 1)
-time_func(f3, 0, 1)
-time_func(f4, 0, 1)
-time_func(getindex, v, 1)
+@time_func(f0, 0, 1)
+@time_func(f1, 0, 1)
+@time_func(f2, 0, 1)
+@time_func(f3, 0, 1)
+@time_func(f4, 0, 1)
+@time_func(getindex, v, 1)

@@ -43,19 +43,21 @@ function f4(a, b)
     a
 end
 
-macro time_func(f, _args...)
+macro time_func(f, args...)
+    args = eval(current_module(), Expr(:tuple, args...))::Tuple
+    argnames = Symbol[gensym() for i in 1:length(args)]
+    types = map(typeof, args)
     quote
-        const args = $(Expr(:tuple, _args...))
-        function wrapper()
+        function wrapper($(argnames...))
             $(Expr(:meta, :noinline))
-            $f(args...)
+            $f($(argnames...))
         end
         function timing_wrapper()
-            println($f)
-            wrapper()
+            println($f, $types)
+            wrapper($(args...))
             gc()
             @time for i in 1:1000000000
-                wrapper()
+                wrapper($(args...))
             end
             gc()
         end

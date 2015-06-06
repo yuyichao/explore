@@ -1,7 +1,7 @@
 #!/usr/bin/julia -f
 
 macro throw_interp(typ, arg1, arg2)
-    :(throw(typ(string("Random format string, ", $arg1, ", ", $arg2))))
+    :(throw($typ(string("Random format string, ", $arg1, ", ", $arg2))))
 end
 
 @noinline throw1(typ::ANY, arg1, arg2) = throw(typ(arg1, arg2))

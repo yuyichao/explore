@@ -50,13 +50,13 @@ const P = Propagator1D(2π * 10.0 * 0.005, 10000, grid_size)
 ψ0 = gen_ψ0(grid_size, grid_space, x_center)
 ψs = zeros(Complex128, (2, P.nele, P.nstep + 1))
 
-open("propagate.ll", "w") do fd
-    code_llvm(fd, propagate, Base.typesof(P, ψ0, ψs, 0.7))
-end
+# open("propagate.ll", "w") do fd
+#     code_llvm(fd, propagate, Base.typesof(P, ψ0, ψs, 0.7))
+# end
 
-open("propagate.S", "w") do fd
-    code_native(fd, propagate, Base.typesof(P, ψ0, ψs, 0.7))
-end
+# open("propagate.S", "w") do fd
+#     code_native(fd, propagate, Base.typesof(P, ψ0, ψs, 0.7))
+# end
 
 @time ψs = propagate(P, ψ0, ψs, 0.7)
 gc()

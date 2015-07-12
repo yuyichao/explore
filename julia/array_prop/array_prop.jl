@@ -6,24 +6,19 @@ immutable Propagator1D{T}
     nele::Int
 end
 
-function propagate{T}(P::Propagator1D{T}, ψ0::Matrix{Complex{T}}, eΓ)
-    ψs = zeros(Complex{T}, (2, P.nele, P.nstep + 1))
+function propagate(P, ψ0, ψs, eΓ)
     @inbounds for i in 1:P.nele
         ψs[1, i, 1] = ψ0[1, i]
         ψs[2, i, 1] = ψ0[2, i]
     end
-    cos_dt = cos(P.Ω)
-    sin_dt = sin(P.Ω)
-    T12 = im * sin_dt
-    T11 = cos_dt
-    T22 = cos_dt
-    T21 = im * sin_dt
+    T12 = im * sin(P.Ω)
+    T11 = cos(P.Ω)
     @inbounds for i in 2:(P.nstep + 1)
         for j in 1:P.nele
             ψ_e = ψs[1, j, i - 1]
             ψ_g = ψs[2, j, i - 1] * eΓ
             ψs[2, j, i] = T11 * ψ_e + T12 * ψ_g
-            ψs[1, j, i] = T22 * ψ_g + T21 * ψ_e
+            ψs[1, j, i] = T11 * ψ_g + T12 * ψ_e
         end
     end
     ψs
@@ -50,16 +45,24 @@ function gen_ψ0(grid_size, grid_space, x_center)
     ψ0
 end
 
-ψ0 = gen_ψ0(grid_size, grid_space, x_center)
-
 const P = Propagator1D(2π * 10.0 * 0.005, 10000, grid_size)
 
-println("start")
+ψ0 = gen_ψ0(grid_size, grid_space, x_center)
+ψs = zeros(Complex128, (2, P.nele, P.nstep + 1))
 
-@time ψs = propagate(P, ψ0, 0.7)
+open("propagate.ll", "w") do fd
+    code_llvm(fd, propagate, Base.typesof(P, ψ0, ψs, 0.7))
+end
+
+open("propagate.S", "w") do fd
+    code_native(fd, propagate, Base.typesof(P, ψ0, ψs, 0.7))
+end
+
+@time ψs = propagate(P, ψ0, ψs, 0.7)
 gc()
-@time ψs = propagate(P, ψ0, 0.7)
-gc()
-@time ψs = propagate(P, ψ0, 0.0)
-gc()
-@time ψs = propagate(P, ψ0, 1.0)
+@time ψs = propagate(P, ψ0, ψs, 0.7)
+for eΓ in 0.0:0.1:1.0
+    println(eΓ)
+    gc()
+    @time ψs = propagate(P, ψ0, ψs, eΓ)
+end

@@ -8,17 +8,17 @@ end
 
 function propagate(P, ψ0, ψs, eΓ)
     @inbounds for i in 1:P.nele
-        ψs[1, i, 1] = ψ0[1, i]
-        ψs[2, i, 1] = ψ0[2, i]
+        ψs[1, i] = ψ0[1, i]
+        ψs[2, i] = ψ0[2, i]
     end
     T12 = sin(P.Ω)
     T11 = cos(P.Ω)
     @inbounds for i in 2:(P.nstep + 1)
         for j in 1:P.nele
-            ψ_e = ψs[1, j, i - 1]
-            ψ_g = ψs[2, j, i - 1] * eΓ
-            ψs[2, j, i] = T11 * ψ_e + T12 * ψ_g
-            ψs[1, j, i] = T11 * ψ_g - T12 * ψ_e
+            ψ_e = ψs[1, j]
+            ψ_g = ψs[2, j] * eΓ
+            ψs[2, j] = T11 * ψ_e + T12 * ψ_g
+            ψs[1, j] = T11 * ψ_g - T12 * ψ_e
         end
     end
     ψs
@@ -48,7 +48,7 @@ end
 const P = Propagator1D(2π * 10.0 * 0.005, 10000, grid_size)
 
 ψ0 = gen_ψ0(grid_size, grid_space, x_center)
-ψs = zeros(Float64, (2, P.nele, P.nstep + 1))
+ψs = zeros(Float64, (2, P.nele))
 
 # open("propagate.ll", "w") do fd
 #     code_llvm(fd, propagate, Base.typesof(P, ψ0, ψs, 0.7))

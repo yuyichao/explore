@@ -11,14 +11,14 @@ function propagate(P, ψ0, ψs, eΓ)
         ψs[1, i, 1] = ψ0[1, i]
         ψs[2, i, 1] = ψ0[2, i]
     end
-    T12 = im * sin(P.Ω)
+    T12 = sin(P.Ω)
     T11 = cos(P.Ω)
     @inbounds for i in 2:(P.nstep + 1)
         for j in 1:P.nele
             ψ_e = ψs[1, j, i - 1]
             ψ_g = ψs[2, j, i - 1] * eΓ
             ψs[2, j, i] = T11 * ψ_e + T12 * ψ_g
-            ψs[1, j, i] = T11 * ψ_g + T12 * ψ_e
+            ψs[1, j, i] = T11 * ψ_g - T12 * ψ_e
         end
     end
     ψs
@@ -30,7 +30,7 @@ grid_space = 0.01
 x_center = (grid_size + 1) * grid_space / 2
 
 function gen_ψ0(grid_size, grid_space, x_center)
-    ψ0 = zeros(Complex128, (2, grid_size))
+    ψ0 = zeros(Float64, (2, grid_size))
     sum = 0.0
     @inbounds for i in 1:grid_size
         ψ = exp(-((i * grid_space - x_center + 0.2) / (0.3))^2)
@@ -48,7 +48,7 @@ end
 const P = Propagator1D(2π * 10.0 * 0.005, 10000, grid_size)
 
 ψ0 = gen_ψ0(grid_size, grid_space, x_center)
-ψs = zeros(Complex128, (2, P.nele, P.nstep + 1))
+ψs = zeros(Float64, (2, P.nele, P.nstep + 1))
 
 # open("propagate.ll", "w") do fd
 #     code_llvm(fd, propagate, Base.typesof(P, ψ0, ψs, 0.7))
@@ -61,6 +61,8 @@ const P = Propagator1D(2π * 10.0 * 0.005, 10000, grid_size)
 @time ψs = propagate(P, ψ0, ψs, 0.7)
 gc()
 @time ψs = propagate(P, ψ0, ψs, 0.7)
+@time ψs = propagate(P, ψ0, ψs, 0.5)
+@time ψs = propagate(P, ψ0, ψs, 0.5000000000000001)
 for eΓ in 0.0:0.1:1.0
     println(eΓ)
     gc()

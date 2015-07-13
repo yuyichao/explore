@@ -13,7 +13,7 @@ function propagate(P, ψ0, ψs, eΓ)
     end
     T12 = sin(P.Ω)
     T11 = cos(P.Ω)
-    @inbounds for i in 2:(P.nstep + 1)
+    @inbounds for i in 1:P.nstep
         for j in 1:P.nele
             ψ_e = ψs[1, j]
             ψ_g = ψs[2, j] * eΓ
@@ -31,16 +31,10 @@ x_center = (grid_size + 1) * grid_space / 2
 
 function gen_ψ0(grid_size, grid_space, x_center)
     ψ0 = zeros(Float64, (2, grid_size))
-    sum = 0.0
     @inbounds for i in 1:grid_size
         ψ = exp(-((i * grid_space - x_center + 0.2) / (0.3))^2)
-        sum += abs2(ψ)
         ψ0[1, i] = ψ
         ψ0[2, i] = 0
-    end
-    sum = sqrt(sum)
-    @inbounds for i in 1:grid_size
-        ψ0[1, i] /= sum
     end
     ψ0
 end

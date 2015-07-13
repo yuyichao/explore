@@ -1,5 +1,23 @@
 #!/usr/bin/julia -f
 
+function getmxcsr()
+    Base.llvmcall("""
+                  %csr = alloca i32, align 4
+                  call void asm sideeffect "stmxcsr \$0", "=*m,~{dirflag},~{fpsr},~{flags}"(i32* %csr)
+                  %curval = load i32* %csr, align 4
+                  ret i32 %curval
+                  """, UInt32, Tuple{})
+end
+
+function setmxcsr(u::UInt32)
+    Base.llvmcall("""
+                  %csr = alloca i32, align 4
+                  store i32 %0, i32* %csr, align 4
+                  call void asm sideeffect "ldmxcsr \$0", "*m,~{dirflag},~{fpsr},~{flags}"(i32* %csr)
+                  ret void
+                  """, Void, Tuple{UInt32}, u)
+end
+
 immutable Propagator1D{T}
     nstep::Int
     T12::T
@@ -7,6 +25,8 @@ immutable Propagator1D{T}
 end
 
 @noinline function propagate(P, ψs, eΓ)
+    old_csr = getmxcsr()
+    setmxcsr(old_csr | 0x8040)
     @inbounds ψs[1] = 1
     @inbounds ψs[2] = 0
     @inbounds for i in 1:P.nstep
@@ -17,6 +37,7 @@ end
         ψs[2] = ψ_e2
         ψs[1] = ψ_g2
     end
+    setmxcsr(old_csr)
 end
 
 θ = 0.3
@@ -33,13 +54,8 @@ const P = Propagator1D(10000000, sin(θ), cos(θ))
 
 function timing(P, ψs)
     @time propagate(P, ψs, 0.7)
-    @profile propagate(P, ψs, 0.5)
-    Profile.print()
-    Profile.clear()
-    println()
-    @profile propagate(P, ψs, 0.5000000000000001)
-    Profile.print()
-    Profile.clear()
+    @time propagate(P, ψs, 0.5)
+    @time propagate(P, ψs, 0.5000000000000001)
     for eΓ in 0.0:0.1:1.0
         println(eΓ)
         @time propagate(P, ψs, eΓ)

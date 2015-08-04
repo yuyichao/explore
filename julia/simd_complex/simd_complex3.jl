@@ -2,6 +2,8 @@
 
 using StructsOfArrays
 
+import Base: *
+
 @inline unit_imag{T<:Real}(::T) = T(1)
 @inline unit_imag{T}(::T) = T(im)
 
@@ -27,6 +29,11 @@ end
 
 @inline unit_imag2{T<:Real}(::T) = T(1)
 @inline unit_imag2{T}(::T) = im
+
+# The base definition doesn't get inlined...
+@inline *{T<:FloatingPoint}(z::Complex{T}, w::Complex{Bool}) =
+    Complex(real(z) * real(w) - imag(z) * imag(w),
+            real(z) * imag(w) + imag(z) * real(w))
 
 function f2(x, a)
     s = real(zero(eltype(x)))
@@ -72,3 +79,5 @@ println()
 @time g2(100_000, r, ra)
 @time g2(100_000, c, ca)
 @time g2(100_000, sc, ca)
+
+# @code_warntype f2(sc, ca)

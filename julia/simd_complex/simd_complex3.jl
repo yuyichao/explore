@@ -2,13 +2,16 @@
 
 using StructsOfArrays
 
+@inline unit_imag{T<:Real}(::T) = T(1)
+@inline unit_imag{T}(::T) = T(im)
+
 function f1(x, a)
     s = real(zero(eltype(x)))
     s2 = real(zero(eltype(x)))
     @inbounds @simd for i in 1:size(x, 1)
         x1 = x[i, 1]
         x2 = x[i, 2]
-        x1 *= a
+        x1 *= a * unit_imag(a)
         x2 *= a
         s += abs2(x1)
         s2 += abs2(x2)
@@ -22,6 +25,9 @@ g1(n, x, a) = for i in 1:n
     f1(x, a)
 end
 
+@inline unit_imag2{T<:Real}(::T) = T(1)
+@inline unit_imag2{T}(::T) = im
+
 function f2(x, a)
     s = real(zero(eltype(x)))
     s2 = real(zero(eltype(x)))
@@ -30,8 +36,8 @@ function f2(x, a)
         x2 = x[i, 2]
         s += abs2(x1)
         s2 += abs2(x2)
-        x1 = x1 * a
-        x2 = x2 * a
+        x1 *= a * unit_imag2(a)
+        x2 *= a
         x[i, 1] = x1
         x[i, 2] = x2
     end

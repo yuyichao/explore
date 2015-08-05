@@ -5,7 +5,6 @@ cscope.*
 .git/
 *~
 /tmp/
-generated*.*
 *.so
 *.o
 *.a

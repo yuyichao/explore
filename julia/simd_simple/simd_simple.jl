@@ -49,8 +49,9 @@ function timeit(n, reps)
     println("GFlop   (SIMD) = ",2.0*n*reps/time*1E-9)
 end
 
-timeit(1000, 1000)
+timeit(10000, 100000)
 
-# @code_native inner(rand(Float32, 10), rand(Float32, 10))
+# @code_llvm innersimd(rand(Float32, 10), rand(Float32, 10))
+# @code_native innersimd(rand(Float32, 10), rand(Float32, 10))
 # @code_llvm innerunroll(rand(Float32, 10), rand(Float32, 10))
 # @code_native innerunroll(rand(Float32, 10), rand(Float32, 10))

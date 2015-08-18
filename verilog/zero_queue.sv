@@ -21,25 +21,21 @@ module zero_queue
    // *_ready are both high.
    localparam QUEUE_DEPTH = 1 << QUEUE_DEPTH_WIDTH;
 
-   // Number of input and output data with overflow one bit longer than
-   // the queue depth in order to distinguish queue full and queue empty
-   reg [QUEUE_DEPTH_WIDTH:0] in_count = 0;
-   reg [QUEUE_DEPTH_WIDTH:0] out_count = 0;
-   // Data queue
+   // The actual data queue
    reg [DATA_WIDTH - 1:0] queue [0:(QUEUE_DEPTH - 1)];
-   wire [QUEUE_DEPTH_WIDTH - 1:0] queue_write_ptr =
-                                  in_count[QUEUE_DEPTH_WIDTH - 1:0];
-   wire [QUEUE_DEPTH_WIDTH - 1:0] queue_read_ptr =
-                                  out_count[QUEUE_DEPTH_WIDTH - 1:0];
-   wire in_parity = in_count[QUEUE_DEPTH_WIDTH];
-   wire out_parity = out_count[QUEUE_DEPTH_WIDTH];
+   reg [QUEUE_DEPTH_WIDTH - 1:0] queue_write_ptr = 0;
+   // Single bit overflow counter
+   reg in_overflow = 0;
+   reg [QUEUE_DEPTH_WIDTH - 1:0] queue_read_ptr = 0;
+   // Single bit overflow counter
+   reg out_overflow = 0;
 
+   // The write and read pointer points to the same cell, this means that the
+   // queue is either full or empty (determined by the overflow bits).
    wire ptr_overlap = queue_write_ptr == queue_read_ptr;
-   wire ptr_parity_same = in_parity == out_parity;
-   wire queue_empty = ptr_overlap && ptr_parity_same;
-   // This is enough to determine whether the queue is full if we can garentee
-   // that the queue is never overfilled.
-   wire queue_full = ptr_overlap && !ptr_parity_same;
+   // Here we assume that the queue never overflows
+   wire queue_empty = ptr_overlap && (in_overflow == out_overflow);
+   wire queue_full = ptr_overlap && (in_overflow != out_overflow);
 
    assign in_ready = !queue_full || out_ready;
    assign out_valid = !queue_empty || in_valid;
@@ -49,17 +45,14 @@ module zero_queue
    always @(posedge clock) begin
       // Read the data
       if (in_ready && in_valid) begin
-         in_count <= in_count + 1;
+         {in_overflow, queue_write_ptr} <= {in_overflow, queue_write_ptr} + 1;
          // This write may not be necessary when out_ready == true. However
          // an unconditional write is probably simpler
          queue[queue_write_ptr] <= in_data;
       end
-   end
-
-   always @(posedge clock) begin
       // Write data
       if (out_valid && out_ready) begin
-         out_count <= out_count + 1;
+         {out_overflow, queue_read_ptr} <= {out_overflow, queue_read_ptr} + 1;
       end
    end
 endmodule
@@ -75,8 +68,12 @@ module zero_queue_test();
    wire out_valid;
    reg out_ready = 0;
 
+   // Declare input for the first queue ahead of time to suppress IVerilog
+   // warning of dangling input.
+   wire ready1;
+
    zero_queue
-     #(.QUEUE_DEPTH_WIDTH(2),
+     #(.QUEUE_DEPTH_WIDTH(1),
        .DATA_WIDTH(16))
    zq(.clock(clock),
 
@@ -84,9 +81,20 @@ module zero_queue_test();
       .in_ready(in_ready),
       .in_data(in_data),
 
-      .out_valid(out_valid),
-      .out_ready(out_ready),
-      .out_data(out_data));
+      .out_ready(ready1));
+
+   zero_queue
+     #(.QUEUE_DEPTH_WIDTH(1),
+       .DATA_WIDTH(16))
+   zq2(.clock(clock),
+
+       .in_valid(zq.out_valid),
+       .in_data(zq.out_data),
+       .in_ready(ready1),
+
+       .out_valid(out_valid),
+       .out_ready(out_ready),
+       .out_data(out_data));
 
    always
      #1 clock = !clock;

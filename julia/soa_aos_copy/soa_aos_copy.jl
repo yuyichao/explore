@@ -56,13 +56,37 @@ end
     dest
 end
 
-@inline function copy_simdc{N}(dest::SoCArray{Float32,N},
+@inline function copy_c{N}(dest::SoCArray{Float32,N},
                                src::Array{Complex{Float32},N})
     len = length(src)
     dest_ptr1 = Ptr{UInt32}(pointer(dest.arrays[1]))
     dest_ptr2 = Ptr{UInt32}(pointer(dest.arrays[2]))
     src_ptr = Ptr{UInt64}(pointer(src))
     ccall((:copy_soa2aos, "./complex_copy.so"),
+          Void, (Ptr{Float32}, Ptr{Float32}, Ptr{Float32}, Csize_t),
+          src_ptr, dest_ptr1, dest_ptr2, len)
+    dest
+end
+
+@inline function copy_c_cilk{N}(dest::SoCArray{Float32,N},
+                                src::Array{Complex{Float32},N})
+    len = length(src)
+    dest_ptr1 = Ptr{UInt32}(pointer(dest.arrays[1]))
+    dest_ptr2 = Ptr{UInt32}(pointer(dest.arrays[2]))
+    src_ptr = Ptr{UInt64}(pointer(src))
+    ccall((:copy_soa2aos_cilk, "./complex_copy.so"),
+          Void, (Ptr{Float32}, Ptr{Float32}, Ptr{Float32}, Csize_t),
+          src_ptr, dest_ptr1, dest_ptr2, len)
+    dest
+end
+
+@inline function copy_c_omp{N}(dest::SoCArray{Float32,N},
+                               src::Array{Complex{Float32},N})
+    len = length(src)
+    dest_ptr1 = Ptr{UInt32}(pointer(dest.arrays[1]))
+    dest_ptr2 = Ptr{UInt32}(pointer(dest.arrays[2]))
+    src_ptr = Ptr{UInt64}(pointer(src))
+    ccall((:copy_soa2aos_omp, "./complex_copy.so"),
           Void, (Ptr{Float32}, Ptr{Float32}, Ptr{Float32}, Csize_t),
           src_ptr, dest_ptr1, dest_ptr2, len)
     dest
@@ -101,6 +125,14 @@ function test{T}(::Type{T})
 
     # Test copy from AoS to SoA
     println("AoS -> SoA: $T")
+    println("  Simple:")
+    # @code_native copy_simple(soa_comp_1, aos_comp_1)
+    @time  for i in 1:n
+        copy_simple(soa_comp_1, aos_comp_1)
+    end
+    @time  for i in 1:n
+        copy_simple(soa_comp_2, aos_comp_2)
+    end
     println("  SIMD:")
     # @code_native copy_simd(soa_comp_1, aos_comp_1)
     @time for i in 1:n
@@ -116,53 +148,29 @@ function test{T}(::Type{T})
     @time  for i in 1:n
         copy_blas(soa_comp_2, aos_comp_2)
     end
-    println("  SIMD(C):")
+    println("  C:")
     # @code_native copy_simdc(soa_comp_1, aos_comp_1)
     @time  for i in 1:n
-        copy_simdc(soa_comp_1, aos_comp_1)
+        copy_c(soa_comp_1, aos_comp_1)
     end
     @time  for i in 1:n
-        copy_simdc(soa_comp_2, aos_comp_2)
+        copy_c(soa_comp_2, aos_comp_2)
     end
-    println("  Simple:")
-    # @code_native copy_simple(soa_comp_1, aos_comp_1)
+    println("  Cilk:")
+    # @code_native copy_simdc(soa_comp_1, aos_comp_1)
     @time  for i in 1:n
-        copy_simple(soa_comp_1, aos_comp_1)
-    end
-    @time  for i in 1:n
-        copy_simple(soa_comp_2, aos_comp_2)
-    end
-
-    println("  Blas:")
-    @time  for i in 1:n
-        copy_blas(soa_comp_1, aos_comp_1)
+        copy_c_cilk(soa_comp_1, aos_comp_1)
     end
     @time  for i in 1:n
-        copy_blas(soa_comp_2, aos_comp_2)
+        copy_c_cilk(soa_comp_2, aos_comp_2)
     end
-    println("  Simple:")
-    # @code_llvm copy_simple(soa_comp_1, aos_comp_1)
+    println("  OMP:")
+    # @code_native copy_simdc(soa_comp_1, aos_comp_1)
     @time  for i in 1:n
-        copy_simple(soa_comp_1, aos_comp_1)
-    end
-    @time  for i in 1:n
-        copy_simple(soa_comp_2, aos_comp_2)
-    end
-    println("  SIMD(C):")
-    # @code_llvm copy_simdc(soa_comp_1, aos_comp_1)
-    @time  for i in 1:n
-        copy_simdc(soa_comp_1, aos_comp_1)
+        copy_c_omp(soa_comp_1, aos_comp_1)
     end
     @time  for i in 1:n
-        copy_simdc(soa_comp_2, aos_comp_2)
-    end
-    println("  SIMD:")
-    # @code_llvm copy_simd(soa_comp_1, aos_comp_1)
-    @time  for i in 1:n
-        copy_simd(soa_comp_1, aos_comp_1)
-    end
-    @time  for i in 1:n
-        copy_simd(soa_comp_2, aos_comp_2)
+        copy_c_omp(soa_comp_2, aos_comp_2)
     end
 
     @test aos_comp_1 == soa_comp_1

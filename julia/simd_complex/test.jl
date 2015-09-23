@@ -8,8 +8,5 @@ function test_scale2(ary1, ary2, factor)
     end
 end
 
-ary1 = Vector{Float32}(128)
-ary2 = Vector{Float32}(128)
-
-@code_llvm test_scale2(ary1, ary2, 1f0im)
+Base.code_llvm_raw(test_scale2, Tuple{Vector{Float32}, Vector{Float32}, Complex64})
 # @code_llvm test_scale2(ary1, ary2, 1f0)

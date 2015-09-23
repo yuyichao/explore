@@ -26,21 +26,6 @@ end
         dest
     end
 
-    @generated function get_simd_type1{T}(::Type{T})
-        size = sizeof(T)
-        if size == 1
-            return UInt8
-        elseif size == 2
-            return UInt16
-        elseif size == 4
-            return UInt32
-        elseif size == 8
-            return UInt64
-        else
-            :(throw(TypeError(T)))
-        end
-    end
-
     @inline function copy_simd{N}(dest::SoCArray{Float32,N},
                                   src::Array{Complex{Float32},N})
         len = length(src)
@@ -57,6 +42,21 @@ end
         dest
     end
 
+    @inline function copy_simd{N}(dest::Array{Complex{Float32},N},
+                                  src::SoCArray{Float32,N})
+        len = length(dest)
+        src_ptr1 = Ptr{UInt32}(pointer(src.arrays[1]))
+        src_ptr2 = Ptr{UInt32}(pointer(src.arrays[2]))
+        dest_ptr = Ptr{UInt64}(pointer(dest))
+        @inbounds @simd for i in 1:len
+            src_v1 = unsafe_load(src_ptr1, i)
+            src_v2 = UInt64(unsafe_load(src_ptr2, i))
+            dest_v = (src_v2 << 32) | src_v1
+            unsafe_store!(dest_ptr, dest_v, i)
+        end
+        dest
+    end
+
     @inline function copy_c{N}(dest::SoCArray{Float32,N},
                                src::Array{Complex{Float32},N})
         len = length(src)
@@ -69,27 +69,15 @@ end
         dest
     end
 
-    @inline function copy_c_cilk{N}(dest::SoCArray{Float32,N},
-                                    src::Array{Complex{Float32},N})
-        len = length(src)
-        dest_ptr1 = Ptr{UInt32}(pointer(dest.arrays[1]))
-        dest_ptr2 = Ptr{UInt32}(pointer(dest.arrays[2]))
-        src_ptr = Ptr{UInt64}(pointer(src))
-        ccall((:copy_soa2aos_cilk, "./complex_copy.so"),
+    @inline function copy_c{N}(dest::Array{Complex{Float32},N},
+                               src::SoCArray{Float32,N})
+        len = length(dest)
+        src_ptr1 = Ptr{UInt32}(pointer(src.arrays[1]))
+        src_ptr2 = Ptr{UInt32}(pointer(src.arrays[2]))
+        dest_ptr = Ptr{UInt64}(pointer(dest))
+        ccall((:copy_aos2soa, "./complex_copy.so"),
               Void, (Ptr{Float32}, Ptr{Float32}, Ptr{Float32}, Csize_t),
-              src_ptr, dest_ptr1, dest_ptr2, len)
-        dest
-    end
-
-    @inline function copy_c_omp{N}(dest::SoCArray{Float32,N},
-                                   src::Array{Complex{Float32},N})
-        len = length(src)
-        dest_ptr1 = Ptr{UInt32}(pointer(dest.arrays[1]))
-        dest_ptr2 = Ptr{UInt32}(pointer(dest.arrays[2]))
-        src_ptr = Ptr{UInt64}(pointer(src))
-        ccall((:copy_soa2aos_omp, "./complex_copy.so"),
-              Void, (Ptr{Float32}, Ptr{Float32}, Ptr{Float32}, Csize_t),
-              src_ptr, dest_ptr1, dest_ptr2, len)
+              dest_ptr, src_ptr1, src_ptr2, len)
         dest
     end
 
@@ -101,6 +89,19 @@ end
             v0 = src[i]
             dest1[i] = real(v0)
             dest2[i] = imag(v0)
+        end
+        dest
+    end
+
+    @inline function copy_simple{N}(dest::Array{Complex{Float32},N},
+                                    src::SoCArray{Float32,N})
+        src1 = src.arrays[1]
+        src2 = src.arrays[2]
+        @inbounds @simd for i in 1:length(dest)
+            v1 = src1[i]
+            v2 = src2[i]
+            v = Complex(v1, v2)
+            dest[i] = v
         end
         dest
     end
@@ -117,7 +118,7 @@ end
 
         @test aos_comp_1 != soa_comp_1
 
-        n = 200
+        n = 400
 
         # Test copy from AoS to SoA
         println("AoS -> SoA: $T")
@@ -140,16 +141,6 @@ end
         @time  for i in 1:n
             copy_c(soa_comp_1, aos_comp_1)
         end
-        print("  Cilk:")
-        # @code_native copy_simdc(soa_comp_1, aos_comp_1)
-        @time  for i in 1:n
-            copy_c_cilk(soa_comp_1, aos_comp_1)
-        end
-        print("  OMP:")
-        # @code_native copy_simdc(soa_comp_1, aos_comp_1)
-        @time  for i in 1:n
-            copy_c_omp(soa_comp_1, aos_comp_1)
-        end
 
         @test aos_comp_1 == soa_comp_1
 
@@ -159,8 +150,22 @@ end
 
         # Test copy from SoA to AoS
         println("SoA -> AoS: $T")
+        print("  Simple:")
+        @time for i in 1:n
+            copy_simple(aos_comp_1, soa_comp_1)
+        end
+        print("  SIMD:")
+        @time for i in 1:n
+            copy_simd(aos_comp_1, soa_comp_1)
+        end
         print("  Blas:")
-        @time copy_blas(aos_comp_1, soa_comp_1)
+        @time for i in 1:n
+            copy_blas(aos_comp_1, soa_comp_1)
+        end
+        print("  C:")
+        @time for i in 1:n
+            copy_c(aos_comp_1, soa_comp_1)
+        end
 
         @test aos_comp_1 == soa_comp_1
 

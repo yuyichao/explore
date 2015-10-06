@@ -71,3 +71,8 @@ time_normal(A64, (0.1,), 1000)
 time_simd(A64, (0.1,), 1000)
 time_normal(A64, (0.1f0,), 1000)
 time_simd(A64, (0.1f0,), 1000)
+
+println()
+println()
+@code_llvm fill_simd(A32, (0.1,))
+@code_llvm fill_simd(A32, (0.1f0,))

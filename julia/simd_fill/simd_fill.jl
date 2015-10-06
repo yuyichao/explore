@@ -20,8 +20,10 @@ time_base(A, v, n) = @time for i in 1:n
     fill!(A, v)
 end
 
-A32 = rand(Float32, 1000, 1000)
-A64 = rand(Float64, 1000, 1000)
+# A32 = rand(Float32, 1000, 1000)
+# A64 = rand(Float64, 1000, 1000)
+A32 = rand(Float32, 1000 * 1000)
+A64 = rand(Float64, 1000 * 1000)
 
 time_normal(A32, 0.1, 1)
 time_normal(A64, 0.1, 1)

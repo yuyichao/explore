@@ -47,8 +47,8 @@ time3(1im, 1)
 time2(big(1im), 1)
 time3(big(1im), 1)
 
-@code_llvm sin2(big(1im))
-@code_llvm sin3(big(1im))
+# @code_llvm sin2(big(1im))
+# @code_llvm sin3(big(1im))
 
 println()
 time2(1im, 100000000)
@@ -60,3 +60,13 @@ time2(big(1im), 500000)
 time2(big(1im), 500000)
 time3(big(1im), 500000)
 time3(big(1im), 500000)
+
+# 6.221025 seconds
+# 6.270190 seconds
+# 4.995558 seconds
+# 5.109060 seconds
+
+# 5.010225 seconds (43.00 M allocations: 1.103 GB, 2.83% gc time)
+# 4.954545 seconds (43.00 M allocations: 1.103 GB, 2.83% gc time)
+# 4.897699 seconds (42.50 M allocations: 1.088 GB, 2.83% gc time)
+# 4.935186 seconds (42.50 M allocations: 1.088 GB, 2.83% gc time)

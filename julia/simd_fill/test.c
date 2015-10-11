@@ -1,4 +1,4 @@
-//
+// clang -mavx2 -Ofast -Wall -Wextra -S test.c -emit-llvm
 
 #include <stddef.h>
 

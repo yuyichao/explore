@@ -28,6 +28,13 @@ sin3(z::Complex) = sin3(float(z))
     Complex(sin(zr) * cosh(zi), cos(zr) * sinh(zi))
 end
 
+function time1(v, n)
+    gc()
+    @time for i in 1:n
+        sin(v)
+    end
+end
+
 function time2(v, n)
     gc()
     @time for i in 1:n
@@ -42,24 +49,30 @@ function time3(v, n)
     end
 end
 
-time2(1im, 1)
-time3(1im, 1)
-time2(big(1im), 1)
-time3(big(1im), 1)
+time1(1 + 1im, 1)
+time2(1 + 1im, 1)
+time3(1 + 1im, 1)
+time1(big(1 + 1im), 1)
+time2(big(1 + 1im), 1)
+time3(big(1 + 1im), 1)
 
-# @code_llvm sin2(big(1im))
-# @code_llvm sin3(big(1im))
+# @code_llvm sin2(big(1 + 1im))
+# @code_llvm sin3(big(1 + 1im))
 
 println()
-time2(1im, 100000000)
-time2(1im, 100000000)
-time3(1im, 100000000)
-time3(1im, 100000000)
+time1(1 + 1im, 100000000)
+time1(1 + 1im, 100000000)
+time2(1 + 1im, 100000000)
+time2(1 + 1im, 100000000)
+time3(1 + 1im, 100000000)
+time3(1 + 1im, 100000000)
 println()
-time2(big(1im), 500000)
-time2(big(1im), 500000)
-time3(big(1im), 500000)
-time3(big(1im), 500000)
+time1(big(1 + 1im), 500000)
+time1(big(1 + 1im), 500000)
+time2(big(1 + 1im), 500000)
+time2(big(1 + 1im), 500000)
+time3(big(1 + 1im), 500000)
+time3(big(1 + 1im), 500000)
 
 # 6.221025 seconds
 # 6.270190 seconds

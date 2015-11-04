@@ -1,5 +1,91 @@
 #!/usr/bin/julia -f
 
+# Copied from my old python code, need serious rework.....
+
+function _to_nullable_bool(b::Bool)
+    return Nullable(b)
+end
+
+function _to_nullable_bool(b::Nullable{Bool})
+    return b
+end
+
+# There's probably better ways to do this...
+function _sprintf(fmt::AbstractString, args...)
+    ex = quote
+        @sprintf($fmt, $args...)
+    end
+    return eval(ex)
+end
+
+# input: observable, error
+# output: formatted observable +- error in scientific notation
+function _format_unc(a::Number, s::Number, unit::AbstractString,
+                     _sci::Nullable{Bool}, tex::Bool)
+    if s <= 0
+        return @sprintf("%f%s", a, unit)
+    end
+
+    sci = get(_sci, (s >= 100) || max(abs(a), s) < .1)
+
+    la = floor(Int, log10(abs(a)))
+    ls = floor(Int, log10(s))
+    fs = floor(s * 10.0^(1 - ls))
+    if sci
+        fa = a * 10.0^(-la)
+        dl = la - ls + 1
+    else
+        fa = a
+        dl = 1 - ls
+    end
+    dl = max(dl, 0)
+
+    ss = if dl == 1
+        @sprintf("%.1f", fs / 10)
+    else
+        @sprintf("%.0f", fs)
+    end
+
+    return if sci
+        if tex
+            _sprintf("%.$(dl)f(%s)\\times10^{%d}{%s}", fa, ss, la, unit)
+        else
+            _sprintf("%.$(dl)f(%s)*10^%d%s", fa, ss, la, unit)
+        end
+    else
+        _sprintf("%.$(dl)f(%s)%s", fa, ss, unit)
+    end
+end
+
+function _get_if_list(lst::Union{AbstractString,Number}, idx, _def)
+    return lst
+end
+
+function _get_if_list(lst::Nullable, idx, _def)
+    return _def
+end
+
+function _get_if_list(lst, idx, _def)
+    try
+        return lst[idx]
+    catch
+        return _def
+    end
+end
+
+function format_unc(vals::Number, uncs; unit::AbstractString="",
+                    sci=Nullable{Bool}(), tex::Bool=false)
+    return  _format_unc(vals, uncs::Number, unit, _to_nullable_bool(sci), tex)
+end
+
+function format_unc(vals, uncs; unit="", sci=Nullable{Bool}(), tex=false)
+    return [_format_unc(v, _get_if_list(uncs, i, 0), _get_if_list(unit, i, ""),
+                        _get_if_list(sci, i, Nullable{Bool}()),
+                        _get_if_list(tex, i, false))
+            for (v, i) in enumerate(vals)]
+end
+
+
 module J0F
 
 import Base.Math: libm, @evalpoly
@@ -204,9 +290,8 @@ const S03 =  5.1354652442f-07 # 0x3509daa6
 const S04 =  1.1661400734f-09 # 0x30a045e8
 
 function ieee754_j0f(x::Float32)
-    z::Float32 = 0f0
-    hx::Int32 = reinterpret(Int32, x)
-    ix::Int32 = hx & 0x7fffffff
+    x = abs(x)
+    ix::UInt32 = reinterpret(UInt32, x)
     ix >= 0x7f800000 && return 1f0 / (x * x)
     x = abs(x)
     if ix >= 0x40000000 # |x| >= 2.0
@@ -238,6 +323,55 @@ function ieee754_j0f(x::Float32)
         if huge + x > 1f0 # raise inexact if x != 0
             if ix < 0x39800000
                 return 1f0 # |x| < 2^-12
+            else
+                return muladd(z, -0.25f0, 1f0)
+            end
+        end
+    end
+    r = z * @evalpoly(z, R02, R03, R04, R05)
+    s = @evalpoly(z, 1f0, S01, S02, S03, S04)
+    r /= s
+    if ix < 0x3F800000 # |x| < 1.00
+        muladd(z, -0.25f0 + r, 1f0)
+    else
+        u = 0.5f0 * x
+        muladd(1f0 + u, 1f0 - u, z * r)
+    end
+end
+
+function ieee754_j0f2(x::Float32)
+    x = abs(x)
+    ix::UInt32 = reinterpret(UInt32, x)
+    ix >= 0x7f800000 && return 1f0 / (x * x)
+    if ix >= 0x40000000 # |x| >= 2.0
+        s = sin_unchecked(x)
+        c = cos_unchecked(x)
+        ss = s - c
+        cc = s + c
+        if ix < 0x7f000000 # make sure x + x not overflow
+            z = -cos_unchecked(x + x)
+            if s * c < 0f0
+                cc = z / ss
+            else
+                ss = z / cc
+            end
+        end
+        # j0(x) = 1 / sqrt(π) * (P(0, x) * cc - Q(0, x) * ss) / sqrt(x)
+        # y0(x) = 1 / sqrt(π) * (P(0, x) * ss + Q(0, x) * cc) / sqrt(x)
+        if ix > 0x58000000 # |x| > 2^49
+            z = invsqrtpi * cc / sqrt(x)
+        else
+            u = pzerof(x)
+            v = qzerof(x)
+            z = invsqrtpi * (u * cc - v * ss) / sqrt(x)
+        end
+        return z
+    end
+    z = x * x
+    if ix < 0x3b000000 # |x| < 2^-9
+        if huge + x > 1f0 # raise inexact if x != 0
+            if ix < 0x39800000 # |x| < 2^-12
+                return 1f0
             else
                 return muladd(z, -0.25f0, 1f0)
             end
@@ -319,11 +453,50 @@ function ieee754_y0f(x::Float32)
 end
 end
 
-using Benchmarks
-
 j0f_openlibm(x) = ccall((:j0f, Base.Math.libm), Float32, (Float32,), x)
 j0f_libm(x) = ccall((:j0f, "libm"), Float32, (Float32,), x)
 
-@show @benchmark J0F.ieee754_j0f(1f0)
-@show @benchmark j0f_openlibm(1f0)
-@show @benchmark j0f_libm(1f0)
+println(cglobal((:j0f, Base.Math.libm)))
+
+function main()
+    Nrep = 1000
+    Ncycle = 10_000
+    indices = repmat(1:4, Nrep)
+    shuffle!(indices)
+    times = zeros(4)
+    times2 = zeros(4)
+    v = 0.5f0
+    @inbounds for i in eachindex(indices)
+        run = indices[i]
+        if run == 1
+            time = @elapsed for i in 1:Ncycle
+                J0F.ieee754_j0f(v)
+            end
+        elseif run == 2
+            time = @elapsed for i in 1:Ncycle
+                J0F.ieee754_j0f2(v)
+            end
+        elseif run == 3
+            time = @elapsed for i in 1:Ncycle
+                j0f_openlibm(v)
+            end
+        else
+            time = @elapsed for i in 1:Ncycle
+                j0f_libm(v)
+            end
+        end
+        t_ns = time / Ncycle * 1e9
+        times[run] += t_ns
+        times2[run] += t_ns^2
+    end
+    avg_t = times / Nrep
+    avg_t2 = times2 / Nrep
+    unc = sqrt((avg_t2 .- avg_t.^2))
+    strs = [format_unc(avg_t[i], unc[i], unit="ns") for i in 1:4]
+    println(" ieee754_j0f: $(strs[1])")
+    println("ieee754_j0f2: $(strs[2])")
+    println("openlibm_j0f: $(strs[3])")
+    println("    libm_j0f: $(strs[4])")
+end
+
+main()

@@ -1,22 +1,30 @@
 ele_size = 5
 create_vectors(ele_size,seq_len)
-     Time per evaluation: 263.00 μs [142.34 μs, 383.67 μs]
+     Time per evaluation: 264.36 μs [137.78 μs, 390.93 μs]
 create_matrix(ele_size,seq_len)
-     Time per evaluation: 46.00 μs [34.42 μs, 57.57 μs]
+     Time per evaluation: 46.21 μs [34.85 μs, 57.56 μs]
 transpose(res_matrix)
-     Time per evaluation: 66.17 μs [49.70 μs, 82.65 μs]
+     Time per evaluation: 65.40 μs [48.73 μs, 82.07 μs]
 splat_vector1(res_vector)
-     Time per evaluation: 7.79 ms [7.57 ms, 8.00 ms]
+     Time per evaluation: 95.23 μs [80.84 μs, 109.63 μs]
 splat_vector2(res_vector)
-     Time per evaluation: 1.66 ms [1.51 ms, 1.81 ms]
+     Time per evaluation: 126.31 μs [110.63 μs, 141.99 μs]
+sum_vectors(res_vector)
+     Time per evaluation: 85.35 μs [84.95 μs, 85.75 μs]
+sum_matrix(res_matrix)
+     Time per evaluation: 5.49 μs [5.48 μs, 5.50 μs]
 ele_size = 100
 create_vectors(ele_size,seq_len)
-     Time per evaluation: 2.00 ms [1.58 ms, 2.41 ms]
+     Time per evaluation: 901.62 μs [682.24 μs, 1.12 ms]
 create_matrix(ele_size,seq_len)
-     Time per evaluation: 591.48 μs [483.99 μs, 698.96 μs]
+     Time per evaluation: 583.15 μs [506.91 μs, 659.40 μs]
 transpose(res_matrix)
-     Time per evaluation: 1.25 ms [1.12 ms, 1.39 ms]
+     Time per evaluation: 1.18 ms [1.08 ms, 1.28 ms]
 splat_vector1(res_vector)
-     Time per evaluation: 153.83 ms [148.75 ms, 158.92 ms]
+     Time per evaluation: 1.28 ms [1.17 ms, 1.39 ms]
 splat_vector2(res_vector)
-     Time per evaluation: 43.53 ms [43.35 ms, 43.70 ms]
+     Time per evaluation: 4.34 ms [4.16 ms, 4.51 ms]
+sum_vectors(res_vector)
+     Time per evaluation: 242.98 μs [231.56 μs, 254.41 μs]
+sum_matrix(res_matrix)
+     Time per evaluation: 145.58 μs [134.14 μs, 157.03 μs]

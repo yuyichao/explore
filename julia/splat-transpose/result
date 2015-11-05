@@ -1,0 +1,22 @@
+ele_size = 5
+create_vectors(ele_size,seq_len)
+     Time per evaluation: 263.00 μs [142.34 μs, 383.67 μs]
+create_matrix(ele_size,seq_len)
+     Time per evaluation: 46.00 μs [34.42 μs, 57.57 μs]
+transpose(res_matrix)
+     Time per evaluation: 66.17 μs [49.70 μs, 82.65 μs]
+splat_vector1(res_vector)
+     Time per evaluation: 7.79 ms [7.57 ms, 8.00 ms]
+splat_vector2(res_vector)
+     Time per evaluation: 1.66 ms [1.51 ms, 1.81 ms]
+ele_size = 100
+create_vectors(ele_size,seq_len)
+     Time per evaluation: 2.00 ms [1.58 ms, 2.41 ms]
+create_matrix(ele_size,seq_len)
+     Time per evaluation: 591.48 μs [483.99 μs, 698.96 μs]
+transpose(res_matrix)
+     Time per evaluation: 1.25 ms [1.12 ms, 1.39 ms]
+splat_vector1(res_vector)
+     Time per evaluation: 153.83 ms [148.75 ms, 158.92 ms]
+splat_vector2(res_vector)
+     Time per evaluation: 43.53 ms [43.35 ms, 43.70 ms]

@@ -1,0 +1,42 @@
+1
+2
+1.0
+2.0
+@benchmark(call_ary(tary_i,10000)) = ================ Benchmark Results ========================
+     Time per evaluation: 12.90 μs [12.65 μs, 13.16 μs]
+Proportion of time in GC: 0.00% [0.00%, 0.00%]
+        Memory allocated: 0.00 bytes
+   Number of allocations: 0 allocations
+       Number of samples: 2601
+   Number of evaluations: 23101
+         R² of OLS model: 0.972
+ Time spent benchmarking: 0.53 s
+
+@benchmark(call_ary(tary_f32,1.0f0)) = ================ Benchmark Results ========================
+     Time per evaluation: 10.58 μs [10.34 μs, 10.82 μs]
+Proportion of time in GC: 0.00% [0.00%, 0.00%]
+        Memory allocated: 0.00 bytes
+   Number of allocations: 0 allocations
+       Number of samples: 3801
+   Number of evaluations: 74701
+         R² of OLS model: 0.950
+ Time spent benchmarking: 1.39 s
+
+@benchmark(call_ary(uary_i,10000)) = ================ Benchmark Results ========================
+     Time per evaluation: 487.01 μs [0.00 ns, 3.17 ms]
+Proportion of time in GC: 0.00% [0.00%, 0.00%]
+        Memory allocated: 31.25 kb
+   Number of allocations: 2000 allocations
+       Number of samples: 100
+   Number of evaluations: 100
+ Time spent benchmarking: 0.09 s
+
+@benchmark(call_ary(uary_f32,1.0f0)) = ================ Benchmark Results ========================
+     Time per evaluation: 372.59 μs [0.00 ns, 2.35 ms]
+Proportion of time in GC: 0.00% [0.00%, 0.00%]
+        Memory allocated: 31.25 kb
+   Number of allocations: 2000 allocations
+       Number of samples: 100
+   Number of evaluations: 100
+ Time spent benchmarking: 0.08 s
+

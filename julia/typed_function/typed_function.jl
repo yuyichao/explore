@@ -3,17 +3,18 @@
 immutable TypedFunction{Res,Arg}
     cptr::Ptr{Void}
     obj
-    @generated function TypedFunction{T}(f::T)
+    function TypedFunction{T}(f::T)
+        # code_llvm(typed_function_wrapper,
+        #           Tuple{Ptr{Tuple{Res,Arg,T}}, isbits(Arg) ? Arg : Ptr{Void}})
         cfunc = cfunction(typed_function_wrapper,
                           isbits(Res) ? Res : Ref{Res},
-                          Tuple{
-                          Ptr{TypedFunction{Res,Arg}},
-                          Ptr{T},isbits(Arg) ? Arg : Ptr{Void}})
-        Expr(:new, TypedFunction{Res,Arg}, cfunc, :f)
+                          Tuple{Ptr{Tuple{Res,Arg,T}},
+                          isbits(Arg) ? Arg : Ptr{Void}})
+        new(cfunc, f)
     end
 end
 
-@generated function typed_function_wrapper{Res,Arg,T}(::Ptr{TypedFunction{Res,Arg}}, obj::Ptr{T}, arg)
+@generated function typed_function_wrapper{Res,Arg,T}(obj::Ptr{Tuple{Res,Arg,T}}, arg)
     objexpr = :(unsafe_pointer_to_objref(obj)::T)
     argexpr = isbits(Arg) ? :arg : :(unsafe_pointer_to_objref(arg)::Arg)
     callexpr = :(res = $objexpr($argexpr))
@@ -28,7 +29,8 @@ end
     Cres = isbits(Res) ? Res : Ref{Res}
     Carg = isbits(Arg) ? Arg : Any
     quote
-        ccall(f.cptr, $Cres, (Any, Any, $Carg), f, f.obj, arg)::Res
+        $(Expr(:meta, :inline))
+        ccall(f.cptr, $Cres, (Any, $Carg), f.obj, arg)
     end
 end
 
@@ -51,17 +53,24 @@ println(b_i(1))
 println(a_f32(1f0))
 println(b_f32(1f0))
 
-tary_i = TypedFunction{Int,Int}[rand() > 0.5 ? a_i : b_i for i in 1:1000]
-tary_f32 = TypedFunction{Float32,Float32}[rand() > 0.5 ? a_f32 : b_f32
-                                          for i in 1:1000]
-uary_i = Union{A,B}[rand() > 0.5 ? A() : B() for i in 1:1000]
-uary_f32 = Union{A,B}[rand() > 0.5 ? A() : B() for i in 1:1000]
+const n = 10000
+rand_types = rand(n)
+tary_i = TypedFunction{Int,Int}[rand_types[i] > 0.5 ? a_i : b_i for i in 1:n]
+tary_f32 = TypedFunction{Float32,Float32}[rand_types[i] > 0.5 ? a_f32 : b_f32
+                                          for i in 1:n]
+uary_i = Union{A,B}[rand_types[i] > 0.5 ? A() : B() for i in 1:n]
+uary_f32 = Union{A,B}[rand_types[i] > 0.5 ? A() : B() for i in 1:n]
 
-call_ary(ary, v) = for f in ary
-    f(v)
+function call_ary(ary, v)
+    @inbounds for f in ary
+        f(v)
+    end
+    nothing
 end
 
 using Benchmarks
+
+@code_llvm call_ary(tary_i, 10000)
 
 @show @benchmark call_ary(tary_i, 10000)
 @show @benchmark call_ary(tary_f32, 1f0)

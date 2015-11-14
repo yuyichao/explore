@@ -1,5 +1,15 @@
 #!/usr/bin/julia -f
 
+function f0(n)
+    for i in 1:n
+        readall(`echo hello`)
+        # gc() # <= with or without this
+        i % 1000 == 0 && println((i, Sys.maxrss()))
+    end
+end
+
+# f0(1000_0000)
+
 close2(s) = nothing
 
 function f1(n)
@@ -22,13 +32,16 @@ type B
     a::A
 end
 
+println(sizeof(B(A())))
+println(sizeof(A()))
+
 function f2(n)
     for i in 1:n
         s = B(A())
         finalizer(s, close2)
         # gc()
         # finalize(s)
-        i % 10000 == 0 && (println(i); gc())
+        i % 10000 == 0 && println((i, Sys.maxrss()))
     end
 end
 
@@ -42,6 +55,6 @@ function f3(n)
     end
 end
 
-f2(6000_000)
+f2(60_000_000)
 
-sleep(3)
+sleep(30)

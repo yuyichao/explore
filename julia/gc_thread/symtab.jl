@@ -2,19 +2,22 @@
 
 using Base.Threads
 
-const strs = ["sym$i" for i in 1:100]
-const symbol_arrays = Vector{Any}(nthreads())
+const n = nthreads()
+
+@show n
+
+const strs = ["sym$i" for i in 1:1000]
+const symbol_arrays = Vector{Any}(n)
 
 function gen_all_symbols()
     ary = Vector{Any}(length(strs))
     for i in 1:length(ary)
-        # i % 10 == 0 && ccall(:printf, Cint, (Cstring, Cint), "%d\n", i)
         ary[i] = symbol(strs[i])
     end
     ary
 end
 
-@threads for i in 1:nthreads()
+@threads for i in 1:n
     symbol_arrays[i] = gen_all_symbols()
 end
 

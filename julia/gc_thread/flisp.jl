@@ -17,10 +17,13 @@ end
 function f()
     if rand(Bool)
         lock!(lock)
-        ex = parse("@macro2")
-        ex2 = macroexpand(ex)
-        eval(ex2)
-        unlock!(lock)
+        try
+            ex = parse("@macro2")
+            ex2 = macroexpand(ex)
+            eval(ex2)
+        finally
+            unlock!(lock)
+        end
     else
         ex = parse("@macro1")
         ex2 = macroexpand(ex)

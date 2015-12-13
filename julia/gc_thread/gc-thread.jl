@@ -13,7 +13,8 @@ ex = quote
             for k in 1:10
                 r = rand() * 5
                 if r < 1
-                    global f(x) = (x[]; i)
+                    @gensym T
+                    eval(:(f{$T}(x::$T) = (x[]; $T)))
                 elseif r < 2
                     gc(false)
                 elseif r < 3

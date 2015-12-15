@@ -24,8 +24,8 @@ function bytes2hex2(a::AbstractArray{UInt8})
         cl = c & 0xf
         # Hex representation of the bits
         hh = UInt16(ifelse(ch >= 10, UInt8('a' - 10) + ch, UInt8('0') + ch))
-        hl = UInt8(ifelse(ch >= 10, UInt8('a' - 10) + ch, UInt8('0') + ch))
-        h = hh << 8 | hl
+        hl = UInt16(ifelse(cl >= 10, UInt8('a' - 10) + cl, UInt8('0') + cl))
+        h = hl << 8 | hh
         unsafe_store!(pb, h, i)
     end
     return ASCIIString(b)
@@ -42,15 +42,21 @@ function bytes2hex3(a::AbstractArray{UInt8})
         cl = c & 0xf
         # Hex representation of the bits
         hh = UInt16(ifelse(ch >= 10, UInt8('a' - 10) + ch, UInt8('0') + ch))
-        hl = UInt8(ifelse(ch >= 10, UInt8('a' - 10) + ch, UInt8('0') + ch))
-        b[i] = hh << 8 | hl
+        hl = UInt16(ifelse(cl >= 10, UInt8('a' - 10) + cl, UInt8('0') + cl))
+        b[i] = hl << 8 | hh
     end
     return ASCIIString(reinterpret(UInt8, b))
 end
 
+println(bytes2hex(UInt8[10, 20, 40, 60]))
+println(bytes2hex2(UInt8[10, 20, 40, 60]))
+println(bytes2hex3(UInt8[10, 20, 40, 60]))
+
 str10 = rand(UInt8, 10)
 str100 = rand(UInt8, 100)
 str1000 = rand(UInt8, 1000)
+
+# @code_llvm bytes2hex2(str10)
 
 @show @benchmark bytes2hex(str10)
 @show @benchmark bytes2hex2(str10)

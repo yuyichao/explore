@@ -1,36 +1,36 @@
 #!/usr/bin/julia -f
 
+@inline function assume(x::Bool)
+    Base.llvmcall(("declare void @llvm.assume(i1)",
+                   """call void @llvm.assume(i1 %0)
+                   ret void"""), Void, Tuple{Bool}, x)
+end
+
 immutable TypedFunction{Res,Arg}
     cptr::Ptr{Void}
+    pobj::Ptr{Void}
     obj
     function TypedFunction{T}(f::T)
-        # code_llvm(typed_function_wrapper,
-        #           Tuple{Ptr{Tuple{Res,Arg,T}}, isbits(Arg) ? Arg : Ptr{Void}})
-        cfunc = cfunction(typed_function_wrapper,
+        cfunc = cfunction((Res === Void ? typed_function_wrapper_void :
+                           typed_function_wrapper),
                           isbits(Res) ? Res : Ref{Res},
-                          Tuple{Ptr{Tuple{Res,Arg,T}},
-                          isbits(Arg) ? Arg : Ptr{Void}})
-        new(cfunc, f)
+                          Tuple{Ref{T},isbits(Arg) ? Arg : Ref{Arg}})
+        new(cfunc, pointer_from_objref(f), f)
     end
 end
 
-@generated function typed_function_wrapper{Res,Arg,T}(obj::Ptr{Tuple{Res,Arg,T}}, arg)
-    objexpr = :(unsafe_pointer_to_objref(obj)::T)
-    argexpr = isbits(Arg) ? :arg : :(unsafe_pointer_to_objref(arg)::Arg)
-    callexpr = :(res = $objexpr($argexpr))
-    retexpr = Res == Void ? nothing : :(res::Res)
-    quote
-        $callexpr
-        $retexpr
-    end
-end
+typed_function_wrapper(obj, arg) = obj(arg)
+typed_function_wrapper_void(obj, arg) = (obj(arg); nothing)
 
 @generated function call{Res,Arg}(f::TypedFunction{Res,Arg}, arg::Arg)
     Cres = isbits(Res) ? Res : Ref{Res}
     Carg = isbits(Arg) ? Arg : Any
     quote
         $(Expr(:meta, :inline))
-        ccall(f.cptr, $Cres, (Any, $Carg), f.obj, arg)
+        cptr = f.cptr
+        if cptr != C_NULL
+            ccall(cptr, $Cres, (Ptr{Void}, $Carg), f.pobj, arg)
+        end
     end
 end
 
@@ -48,10 +48,10 @@ a_f32 = TypedFunction{Float32,Float32}(A())
 b_i = TypedFunction{Int,Int}(B())
 b_f32 = TypedFunction{Float32,Float32}(B())
 
-println(a_i(1))
-println(b_i(1))
-println(a_f32(1f0))
-println(b_f32(1f0))
+@assert a_i(1) === 1
+@assert b_i(1) === 2
+@assert a_f32(1f0) === 1f0
+@assert b_f32(1f0) === 2f0
 
 const n = 10000
 rand_types = rand(n)
@@ -62,8 +62,8 @@ uary_i = Union{A,B}[rand_types[i] > 0.5 ? A() : B() for i in 1:n]
 uary_f32 = Union{A,B}[rand_types[i] > 0.5 ? A() : B() for i in 1:n]
 
 function call_ary(ary, v)
-    @inbounds for f in ary
-        f(v)
+    @inbounds for i in eachindex(ary)
+        ary[i](v)
     end
     nothing
 end

@@ -67,6 +67,8 @@ static void test_clock(clockid_t clk_id)
         test_clock(name);                       \
     } while (0)
 
+#ifdef __x86_64__
+
 static __attribute__((noinline)) uint64_t rdtsc(void)
 {
     unsigned hi, lo;
@@ -107,6 +109,11 @@ static void test_rdtsc(void)
     uint64_t res_m = measure_res_rdtsc();
     printf("Time: %.1f; Resolution measured: %" PRIu64 "\n", (double)(end - start) / (double)n, res_m);
 }
+#else
+static void test_rdtsc(void)
+{
+}
+#endif
 
 int main()
 {

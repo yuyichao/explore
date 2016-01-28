@@ -31,6 +31,6 @@ function f()
     end
 end
 
-@threads for i in 1:100
+@threads for i in 1:1000
     f()
 end

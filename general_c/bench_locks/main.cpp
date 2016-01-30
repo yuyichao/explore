@@ -7,7 +7,26 @@
 #include <time.h>
 #include <stdint.h>
 
-uint64_t get_time_ns()
+#if defined(__i386__) || defined(__x86_64__)
+static inline void cpu_pause(void)
+{
+    __asm__ __volatile__("pause");
+}
+static inline void cpu_wake(void)
+{
+}
+#elif defined(__aarch64__) || defined(__arm__)
+static inline void cpu_pause(void)
+{
+    __asm__ __volatile__("wfe");
+}
+static inline void cpu_wake(void)
+{
+    __asm__ __volatile__("sev");
+}
+#endif
+
+uint64_t get_time_ns(void)
 {
     struct timespec t;
     clock_gettime(CLOCK_MONOTONIC, &t);
@@ -112,17 +131,20 @@ public:
     lock()
     {
         while (m_spin.exchange(true)) {
-            if (yield)
+            if (yield) {
                 std::this_thread::yield();
-#if defined(__i386__) || defined(__x86_64__)
-            __asm__ __volatile__ ("pause");
-#endif
+            } else {
+                // cpu_pause();
+            }
         }
     }
     inline void
     unlock()
     {
         m_spin = false;
+        if (!yield) {
+            // cpu_wake();
+        }
     }
 };
 
@@ -184,8 +206,8 @@ public:
 
 int main()
 {
-    test_lock<SpinLock<true>>(1000000L);
-    test_lock<SpinLock<false>>(1000000L);
+    test_lock<SpinLock<true>>(10000L);
+    test_lock<SpinLock<false>>(10000L);
     test_lock<PthreadMutex>();
     test_lock<PthreadHybridMutex>();
     return 0;

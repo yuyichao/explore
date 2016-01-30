@@ -5,8 +5,8 @@ function bug{T<:AbstractFloat}(data::Matrix{T})
     cumulantT4 = SharedArray(T, n, n, n, n)
 
     for i = 1:n, j = i:n, k = j:n
-      println("$i $j $k")
-      @sync @parallel for l = k:n
+        println("$i $j $k")
+        @sync @parallel for l = k:n
             a = 1.0
             cumulantT4[i,j,k,l] = a
             cumulantT4[l,j,k,i] = a

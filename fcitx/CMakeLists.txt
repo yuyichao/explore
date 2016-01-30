@@ -1,6 +1,10 @@
 project(test-fcitx)
 
-find_package(Fcitx 4.2.7 REQUIRED)
+find_package(Fcitx 4.2.7)
+if(NOT Fcitx_FOUND)
+  return()
+endif()
+
 include_directories(
   ${FCITX4_FCITX_INCLUDE_DIRS}
   ${FCITX4_FCITX_UTILS_INCLUDE_DIRS}

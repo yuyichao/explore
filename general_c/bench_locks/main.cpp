@@ -210,8 +210,10 @@ public:
 
 int main()
 {
-    test_lock<SpinLock<true>>(10000L);
-    test_lock<SpinLock<false>>(10000L);
+    test_lock<SpinLock<true>>(100000L);
+    test_lock<SpinLock<true>>(100000L);
+    test_lock<SpinLock<false>>(100000L);
+    test_lock<SpinLock<false>>(100000L);
     test_lock<PthreadMutex>();
     test_lock<PthreadHybridMutex>();
     return 0;

@@ -1,6 +1,5 @@
 //
 
-#include <atomic>
 #include <thread>
 #include <condition_variable>
 #include <iostream>
@@ -10,7 +9,7 @@
 #if defined(__i386__) || defined(__x86_64__)
 static inline void cpu_pause(void)
 {
-    __asm__ __volatile__("pause");
+    __asm__ __volatile__("pause" ::: "memory");
 }
 static inline void cpu_wake(void)
 {
@@ -18,11 +17,11 @@ static inline void cpu_wake(void)
 #elif defined(__aarch64__) || defined(__arm__)
 static inline void cpu_pause(void)
 {
-    __asm__ __volatile__("wfe");
+    __asm__ __volatile__("wfe" ::: "memory");
 }
 static inline void cpu_wake(void)
 {
-    __asm__ __volatile__("sev");
+    __asm__ __volatile__("sev" ::: "memory");
 }
 #endif
 
@@ -122,28 +121,33 @@ static void test_lock(size_t n=100000L)
 
 template<bool yield=false>
 class SpinLock {
-    std::atomic_bool m_spin;
+    volatile int m_val;
 public:
     SpinLock()
-        : m_spin(false)
+        : m_val(0)
     {}
     inline void
     lock()
     {
-        while (m_spin.exchange(true)) {
-            if (yield) {
-                std::this_thread::yield();
-            } else {
-                // cpu_pause();
+        while (true) {
+            while (m_val) {
+                if (yield) {
+                    std::this_thread::yield();
+                } else {
+                    cpu_pause();
+                }
+            }
+            if (!__sync_lock_test_and_set(&m_val, 1)) {
+                break;
             }
         }
     }
     inline void
     unlock()
     {
-        m_spin = false;
+        __sync_lock_release(&m_val);
         if (!yield) {
-            // cpu_wake();
+            cpu_wake();
         }
     }
 };

@@ -1,7 +1,7 @@
 #!/usr/bin/julia -f
 
 Profile.init(100_000_000, 1e-5)
-n = 10
+n = 1000
 functions = [(f = symbol("f$i"); eval(:($f() = $i))) for i in 1:n]
 @profile for i in 1:n
 end
@@ -13,4 +13,4 @@ tic()
 end
 toc()
 # Profile.print(IOBuffer(), C=true)
-# Profile.print(C=true)
+Profile.print(C=true)

@@ -23,7 +23,7 @@ In summary, the new GC bits scheme consists of the following GC bits
 
 * Age bit:
 
-    Number of GC's a young object have survived. This is the same with before.
+    Number of GC's a young object have survived. This is the same as before.
 
 * Old bit:
 
@@ -404,7 +404,7 @@ If we clear the mark bit when the write barrier triggers, it may look like,
     * clear `parent.mark`
     * put parent in remset
 
-This is essentially the same with the current write barrier implementation.
+This is essentially the same as the current write barrier implementation.
 The disadvantage is that it can put objects that are only refering old object
 in the remset because the object they refer to are in the remset.
 (i.e. this apprach collapse old wb-triggered with young promoting).

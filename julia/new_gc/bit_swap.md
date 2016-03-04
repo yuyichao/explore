@@ -245,46 +245,120 @@ in the remset because the object they refer to are in the remset.
 
 ## Optimization for sweep
 An important optimization that we want (which is also used currently) is to
-be able to skip sweeping a page completely if we don't need to write anything
-to the page.
+be able to skip sweeping a page completely if we don't need to **write**
+anything to the page (i.e. not writing to it either). Since we would like to
+figure these out without actually reading the page, it is necessary to keep
+some out-of-band information in the page metadata. These metadata are generally
+a summary of the gc bits in the page and therefore should be updated whenever
+the affected bits are updated. The only exceptions is the write barrier.
+Although the write barrier can modify the GC bits, it is always fixed up
+before entering the gc mark and sweep phase so it is not necessary to update
+the metadata when the write barrier triggers.
 
-For a page in the free list, this happens if all the free cells are already
-in the free list (i.e. we haven't allocated anything and there's no new free
-cells) and all the live objects are old (i.e. we don't need to clear the
-marked bit).
+* For a free page
 
-The other case is if the page will not be in the freelist at all, i.e. if the
-whole page is free. As mentioned above, one thing to be careful for this case
-during the full sweep is that there might be left over old mark bit on the
-page that can confuse the next sweep. Therefore, we need to make sure during
-the next sweep we only look for the part of the page that is allocated and
-therefore has the GC bits fixed.
+    We can keep the page in a different structure to be allocated in new page
+    mode and avoid free list so that we don't need to write to the page.
+    As mentioned above, one thing to be careful for this case during the full
+    sweep is that there might be left over old mark bit on the page that can
+    confuse the next sweep (sweep1 or sweep2). Therefore, we need to make sure
+    during the next sweep we only look for the part of the page that is
+    allocated and therefore has the GC bits fixed.
 
-These two cases can be detected using two bookkeeping bit in the page metadata.
+    For detecting this case during the sweep, we need to know if there's
+    any live cells in the page. This can be done by keeping a bit for whether
+    any objects in the page are marked. This bit should be updated whenever
+    the marked bit is changed. If a page has this bit set when entering the
+    sweep phase, there's live objects in the page and the page is not a free
+    page. Otherwise, the page is empty and can be freed directly.
 
-1. A bit for whether any objects in the page are marked.
+    Since we have two mark bits that can swap meaning, we need to either
+    also modifying this when we swap the meaning or just keep a page mark bit
+    for each mark bit. The former means going though the page metadata
+    before mark2 and we would like to avoid this. Therefore, we'd like to use
+    a separate page mark bit for each gc mark bit and update them we we modify
+    the gc bits of objects in the page.
 
-    This should be updated whenever the marked bit is changed.
-
-    * The allocator always allocate clean object so this is not affected.
-    * The wb might change this bit depending on our choice but it is always
-      fixed before entering the GC so this is fine.
-    * The marking need to update the page metadata when marking a pool object
+    * The allocator always allocate clean objects so this is not affected.
+    * The marking need to update the current page mark bit when marking a pool
+      object whenever it changes the current mark bit from 0 to 1.
+      The mark2 phase should also clear the old page mark bit since it
+      (old mark) is known to not escape the current GC phase.
     * The sweep should clear this bit if there's no old object in the page.
+      The sweep2 phase should also catch and fix the cases when the old mark
+      bit is not cleared by the mark2 phase (i.e. the's no live object).
+      This should be cheap since we are reading this bit to skip free page
+      anyway.
 
-    If a page has this bit set when entering the sweep phase, there's live
-    objects in the page and the page is not a free page. Otherwise, the page
-    is empty and can be freed directly.
+* For a page with live object inside
 
-2. A bit for whether there's any young allocated cell.
+    We can skip this page only if all the free cells are already in the free
+    list and all the live objects are old. (And we can just chain in the
+    existing free list).
+    In another word, we want to make sure that
 
-    This should be updated whenever there's allocation or when the old bit
-    is changed, i.e. the allocator should set this bit and the sweep should
-    set this depending on if there's any young and live object left in the
-    page.
+    1. For dead/free cells,
 
-    If a page has this bit clear when entering the sweep phase, the cells are
-    either in the free list (non-allocated) or old. (**There could still be old
-    and dead object so we can't skip this page?** Still need a old object
-    counter?? This is only a problem for sweep2 since there's no old and dead
-    object for the normal sweep).
+        There's no newly dead (young or old) objects in the page and
+        there was no allocation in the page since the last GC.
+        Otherwise, we need to fix the freelist.
+
+    2. For live cells,
+
+        They are all old.
+
+    One of the information we can keep track of is that if there were any young
+    allocated cell when entering the GC (including young live ones from the
+    last GC and newly allocated ones since the last GC). This bit should be
+    set or cleared by the sweep (1 and 2) depending of if there's any young
+    cells in the page and set by the allocator when it starts to allocate
+    in a page.
+
+    If the bit is set for the page, there's at least one of
+
+    1. Dead young object (could be newly allocated since last GC)
+    2. Live young object
+
+    in the page so in this case we need to sweep the page (cannot skip it).
+
+    If the bit is cleared for the page, the cells in the page could be
+
+    1. (Dead) In free list
+    2. Dead old object (only for sweep2)
+    3. Live old object
+
+    therefore we can skip the page during sweep1.
+
+    This left us with detecting if there's dead old object in the page
+    during sweep2. One way to do this is to keep two counters of old marked
+    object for each mark bit.
+
+    * The allocator always allocate clean and young objects
+      so this is not affected.
+    * The marking need to update the counter for the current old mark
+      when marking a pool object whenever it creates a new old marked object
+      in the page (this happens during mark1 for marking young objects being
+      promoted and during mark2 for all old objects).
+
+      For the other mark bit,
+
+        * Mark1 doesn't need to care since it's always 0.
+        * Mark2 should in principle decrement the counter for the other mark
+          bit. However, this can be done in sweep2 instead (by just zeroing it).
+
+    * Sweep should never update the current counter since it never create new
+      marked old object.
+
+      Sweep1 doesn't need to read this counter for skipping page as mentioned
+      above.
+
+    Sweep2 should compare the value of the current counter
+    (for the current mark bit, counter1) to the value of the other counter
+    (for the old mark bit, counter2). Counter1 should not be larger than
+    counter2 since counter1 starts at 0 before mark2 and the number in it
+    should be the total **live** old object and the number in counter1 is the
+    total old object (in another word, the final promotion to the old gen, i.e.
+    turning it to old marked, only happend in mark1). Therefore, any difference
+    between the two counter means the page has old dead object and needs to be
+    swept. The sweep2 phase should skip the page accordingly and clear counter2
+    for use with the next full collection.

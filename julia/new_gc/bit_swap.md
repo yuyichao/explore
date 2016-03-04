@@ -34,7 +34,8 @@ In summary, the new GC bits scheme consists of the following GC bits
 
     This bit means that the object is live. During the mark phase, this either
     mean the object is old and should be ignore, or it is already visited by
-    the GC.
+    the GC. (When we are using the new mark bit for marking, we may also refer
+    to this bit as the original mark bit for clarity.)
 
 * Next mark bit:
 
@@ -58,12 +59,13 @@ is based on another observation that after flipping the bit, the only objects
 with the marked bit set are the old objects. The live old object will be visited
 during the full mark phase (by definition) and the dead old object needs to be
 swept (i.e. freed) during the sweep phase (since this is the whole point of
-doing a full collection at all). Therefore, we can reset the old mark bit for
-live objects during the full marking and for dead objects during the sweeping.
+doing a full collection at all). Therefore, we can reset the original mark bit
+for live objects during the full marking and for dead objects during
+the sweeping.
 
 ## GC bits manipulation during important GC procedures
 
-This is break down of what we need to do in different parts of the GC. The
+This is a break down of what we need to do in different parts of the GC. The
 main interfaces of the GC to the rest of the runtime are allocation, write
 barrier and the collection. Newly allocated objects are always clean and has
 no GC bits set. The operations we need to do for the collection and
@@ -77,17 +79,21 @@ notation of mark1 and mark2 until the very end of the GC for clarity.
 
 * Restore gc bit for remset1
 
-    The mark or old bit is cleared by the write barrier. (See options in
-    the write barrier section below.)
+    The old bit is cleared by the write barrier.
+    (See also alternative approaches below.)
 
     This (and the last step about remset below) maintains another invariance
-    that the GC bit is always accurate for old objects in the GC. (And are
+    that the GC bits are always accurate for old objects in the GC. (And are
     only set to a fake value to avoid triggering the same write barrier
     multiple times).
 
 * mark: mark global roots + remset1
 
-    (This can be skipped if the user explicitly asked for a full collection.)
+    This can possibly be skipped if the user explicitly asked for a full
+    collection. If we decide to skip this in such cases, the mark2 phase
+    needs to keep the original old-marked counter valid when marking
+    objects being promoted. See the sweep optimization section below about
+    the old-marked counters.
 
     * age: ignore (mark never has anything to do with the age)
     * mark2: ignore (should always be cleared)
@@ -109,7 +115,7 @@ notation of mark1 and mark2 until the very end of the GC for clarity.
         * mark2: mark everything
 
             * age: ignore (mark never has anything to do with the age)
-            * mark1: clear (reset old mark bit during marking)
+            * mark1: clear (reset original mark bit during marking)
             * mark2: clean -> marked
             * old: preserve remset invariant
 
@@ -130,7 +136,7 @@ notation of mark1 and mark2 until the very end of the GC for clarity.
 
             * `mark2 & old`
 
-                Do nothing (will become mark1 & old after swap the meaning).
+                Do nothing (will become `mark1 & old` after swap the meaning).
                 This is the main case we don't want to do work. See also
                 optimizations below.
 
@@ -260,7 +266,7 @@ the metadata when the write barrier triggers.
     We can keep the page in a different structure to be allocated in new page
     mode and avoid free list so that we don't need to write to the page.
     As mentioned above, one thing to be careful for this case during the full
-    sweep is that there might be left over old mark bit on the page that can
+    sweep is that there might be left over orignal mark bit on the page that can
     confuse the next sweep (sweep1 or sweep2). Therefore, we need to make sure
     during the next sweep we only look for the part of the page that is
     allocated and therefore has the GC bits fixed.
@@ -282,11 +288,11 @@ the metadata when the write barrier triggers.
     * The allocator always allocate clean objects so this is not affected.
     * The marking need to update the current page mark bit when marking a pool
       object whenever it changes the current mark bit from 0 to 1.
-      The mark2 phase should also clear the old page mark bit since it
-      (old mark) is known to not escape the current GC phase.
+      The mark2 phase should also clear the original page mark bit since it
+      (original mark) is known to not escape the current GC phase.
     * The sweep should clear this bit if there's no old object in the page.
-      The sweep2 phase should also catch and fix the cases when the old mark
-      bit is not cleared by the mark2 phase (i.e. the's no live object).
+      The sweep2 phase should also catch and fix the cases when the original
+      mark bit is not cleared by the mark2 phase (i.e. the's no live object).
       This should be cheap since we are reading this bit to skip free page
       anyway.
 
@@ -330,13 +336,13 @@ the metadata when the write barrier triggers.
     therefore we can skip the page during sweep1.
 
     This left us with detecting if there's dead old object in the page
-    during sweep2. One way to do this is to keep two counters of old marked
+    during sweep2. One way to do this is to keep two counters of old-marked
     object for each mark bit.
 
     * The allocator always allocate clean and young objects
       so this is not affected.
-    * The marking need to update the counter for the current old mark
-      when marking a pool object whenever it creates a new old marked object
+    * The marking need to update the counter for the current old-marked
+      when marking a pool object whenever it creates a new old-marked object
       in the page (this happens during mark1 for marking young objects being
       promoted and during mark2 for all old objects).
 
@@ -352,13 +358,21 @@ the metadata when the write barrier triggers.
       Sweep1 doesn't need to read this counter for skipping page as mentioned
       above.
 
-    Sweep2 should compare the value of the current counter
-    (for the current mark bit, counter1) to the value of the other counter
-    (for the old mark bit, counter2). Counter1 should not be larger than
-    counter2 since counter1 starts at 0 before mark2 and the number in it
-    should be the total **live** old object and the number in counter1 is the
-    total old object (in another word, the final promotion to the old gen, i.e.
-    turning it to old marked, only happend in mark1). Therefore, any difference
-    between the two counter means the page has old dead object and needs to be
-    swept. The sweep2 phase should skip the page accordingly and clear counter2
-    for use with the next full collection.
+      Sweep2 should compare the value of the current counter
+      (for the current mark bit, counter1) to the value of the other counter
+      (for the old mark bit, counter2). Counter1 should not be larger than
+      counter2 since counter1 starts at 0 before mark2 and the number in it
+      should be the total **live** old object and the number in counter1 is
+      the total old object (in another word, the final promotion to the old gen,
+      i.e. turning it to old marked, only happend in mark1).
+      Therefore, any difference between the two counter means the page has old
+      dead object and needs to be swept.
+      The sweep2 phase should skip the page accordingly and clear counter2
+      for use with the next full collection.
+
+      One special case is if the user explicitly asked for a full collection.
+      If we decide to skip mark1 in such case, the mark2 phase needs to take
+      care of turning `old & !marked` (young, being promoted) object into
+      `old & marked`. so it needs to check the original mark bit and increment
+      the original old-marked counter if it marks an old object that doesn't
+      have the orignal mark bit set.

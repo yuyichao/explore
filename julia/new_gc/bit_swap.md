@@ -175,79 +175,63 @@ notation of mark1 and mark2 until the very end of the GC for clarity.
                 Clean mark1, set old
 
 * swap remset 1, 2
-* Remove mark bits (or only mark1, only one should be set at this point) or the
-  old bit for objects in remset1.
-  (See options in the write barrier section below)
+* Clear old bit for objects in remset1.
+  (See also alternative approaches below.)
 
 ### Write barrier
 For a generational GC, the write barrier is used to fix the invariance broken
 by young objects referenced by old objects. When a write barrier triggers,
 the parent is put in the remset (so that the parent will be scaned even though
 it is old) and some GC bits are cleared on the parent so that the write barrier
-won't trigger again. Since the old gen has both the mark and old bit set and
-a normal young gen (i.e. not boing promoted) has both the mark and old bit
-cleared, we can do this using either the old or the mark bit.
+won't trigger again.
 
-If we pick the old bit, the write barrier may look like,
+A summary of the possible states in the mutator and whether we might want to
+trigger a write barrier on it if it appears as either parent or child is the
+following,
 
-* If `parent.old && !child.old`
+* old, no write barrier triggered
 
-    * clear `parent.old`
-    * put parent in remset
+    `parent`, `!child`
 
-Note that this will trigger the wb if the parent is a young gen being promoted.
-Since there may be references from old gen to this young gen that didn't
-trigger the wb before, we need to always promote this kind of object to (live)
-old gen.
+* old, write barrier triggered
 
-A variance of the above one is
+    `!parent`, `!child`
 
-* If `parent.old && !child.old && !child.mark`
+* young, non-aged (not being promoted)
 
-    * clear `parent.old`
-    * put parent in remset
+    `!parent`, `child`
 
-This has the same issue with early promotion of aged young object while avoiding
-triggering write barrier on old objects with write barrier triggered. Note that
-the `!child.old && !child.mark` can still be checked with a single mask.
+* young, aged (being promoted)
 
-Another variance is
+    `!parent`, `child`
 
-* If `parent.old && parent.mark && !child.mark`
+Therefore, to avoid false positives, we need at least 2 bits to express the
+three states for the write barrier.
 
-    * clear `parent.old`
-    * put parent in remset
+For bit pattern selection, the old gen needs to be `old & marked`
+and the young non-aged needs to be `!old & !marked`. For young and aged it
+should have `!marked` since we want to sweep it if it is dead during the next GC
+and to distinguish it from young non-aged (during the next GC) it needs to be
+`old & !marked` as mentioned above. This leave us with `!old & marked` for
+the state of old and write barrier triggered. Substitute the gc bits in the
+above summary,
 
-This way we have
+* `old & marked` -> `parent`, `!child`
+* `!old & marked` -> `!parent`, `!child`
+* `!old & !marked` -> `!parent`, `child`
+* `old & !marked` -> `!parent`, `child`
 
-1. clean & old (promoting)/young (new/non-aged)
+We can easily see that `child == !marked` and `parent == old & marked`,
+and when a wb triggers, we clear the old bit.
 
-    trigger wb as child only
+The only issue with this is that the `parent.old && parent.mark` may not be as
+cheap as simply comparing a masked value to `0`.
+If we put the mark bits as the lowest two and the old bit as the third one,
+it could still be implemented as `parent.gc_bits > 4 && !child.mark`
+which shouldn't be too expensive.
 
-2. mark & old (old and not in remset)
-
-    trigger wb as parent only
-
-3. mark & young (old and in remset)
-
-    not trigger any wb
-
-This way, we should have no false positive wb trigger and the promoting object
-won't trigger a write barrier. The only issue with this is that the
-`parent.old && parent.mark` part may not be as cheap as it could be.
-It could still be implemented as `parent.gc_bits > 4 && !child.mark` or
-`parent.gc_bits - child.mark > 4` which shouldn't be too expensive.
-
-If we pick the mark bit, the write barrier will look like,
-
-* If `parent.mark && !child.mark`
-
-    * clear `parent.mark`
-    * put parent in remset
-
-This is essentially the same with the current write barrier implementation.
-The disadvantage is that it can put objects that are only refering old object
-in the remset because the object they refer to are in the remset.
+See the alternative section below for other options that uses simpler
+write barrier check but might result in false positives.
 
 ## Optimization for sweep
 An important optimization that we want (which is also used currently) is to
@@ -376,3 +360,49 @@ the metadata when the write barrier triggers.
       `old & marked`. so it needs to check the original mark bit and increment
       the original old-marked counter if it marks an old object that doesn't
       have the orignal mark bit set.
+
+## Alternative write barrier implementations
+Since the old gen has both the mark and old bit set and a normal young gen
+(i.e. not boing promoted) has both the mark and old bit cleared,
+we can do the write barrier check using only one of the bits. Here we list some
+alternative write barrier approaches that we've considered.
+
+As discussed above, these will result in some false positives since it does
+not use enough bits or violates one of the constraints we have in the
+write barrier section above.
+
+If we clear the old bit when the write barrier triggers, it may look like,
+
+* If `parent.old && !child.old`
+
+    * clear `parent.old`
+    * put parent in remset
+
+Note that this will trigger the wb if the parent is a young gen being promoted.
+Since there may be references from old gen to this young gen that didn't
+trigger the wb before, we need to always promote this kind of object to (live)
+old gen.
+
+A variance of the above one is
+
+* If `parent.old && !child.old && !child.mark`
+
+    * clear `parent.old`
+    * put parent in remset
+
+This has the same issue with early promotion of aged young object while avoiding
+triggering write barrier on old objects with write barrier triggered. Note that
+the `!child.old && !child.mark` can still be checked with a single mask
+comparing to `0`.
+
+If we clear the mark bit when the write barrier triggers, it may look like,
+
+* If `parent.mark && !child.mark`
+
+    * clear `parent.mark`
+    * put parent in remset
+
+This is essentially the same with the current write barrier implementation.
+The disadvantage is that it can put objects that are only refering old object
+in the remset because the object they refer to are in the remset.
+(i.e. this apprach collapse old wb-triggered with young promoting).

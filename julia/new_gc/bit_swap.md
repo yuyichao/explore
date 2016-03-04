@@ -266,7 +266,7 @@ the metadata when the write barrier triggers.
 
     Since we have two mark bits that can swap meaning, we need to either
     also modifying this when we swap the meaning or just keep a page mark bit
-    for each mark bit. The former means going though the page metadata
+    for each mark bit. The former means going through the page metadata
     before mark2 and we would like to avoid this. Therefore, we'd like to use
     a separate page mark bit for each gc mark bit and update them we we modify
     the gc bits of objects in the page.
@@ -431,13 +431,12 @@ in the remset because the object they refer to are in the remset.
 
         * mark1: clean -> marked
 
-            `pg->marked1 |= 1`
-
-            If `old`, `pg->old_marked1 += 1`
+            * `pg->marked1 |= 1`
+            * If `old`, `pg->old_marked1 += 1`
 
         * mark2: clear (no-op, to be consistent with mark2)
 
-              `pg->marked2 = 0`
+            * `pg->marked2 = 0`
 
         * preserve remset invariant
 
@@ -457,16 +456,15 @@ in the remset because the object they refer to are in the remset.
 
                 * mark2: clean -> marked
 
-                    `pg->marked2 |= 1`
+                    * `pg->marked2 |= 1`
+                    * If `old`, `pg->old_marked2 += 1`
+                    * **Difference from mark1**:
 
-                    If this is old `pg->old_marked2 += 1`
-
-                    **Difference from mark1**:
-                    If `!mark1 && old` `pg->old_marked1 += 1`
+                        If `!mark1 && old`, `pg->old_marked1 += 1`
 
                 * mark1: clear
 
-                    `pg->marked1 = 0`
+                    * `pg->marked1 = 0`
 
                 * old: preserve remset invariant
 
@@ -477,25 +475,29 @@ in the remset because the object they refer to are in the remset.
 
                 * `!pg->marked2` -> free page
 
-                    `pg->marked1 = 0`
+                    * `pg->marked1 = 0`
 
                 * `pg->old_marked1 == pg->old_marked2 && !pg->young_allocated`
                   -> use the free list
 
-                    `pg->old_marked1 = 0`
+                    * `pg->old_marked1 = 0`
+                    * `pg->marked1 = 0`
 
                 * slow path (actually sweep the page)
 
-                    * `!mark2` -> free cell (clear mark1 at the same time)
+                    For objects,
+
+                    * `!mark2` -> free cell (clear mark1)
                     * `mark2 & old` -> do nothing
                     * `mark2 & young & !age` -> clear mark2, set age
                     * `mark2 & young & age` -> clear mark2, set old
 
-                    `pg->marked2 = pg->old_marked2 != 0`
+                    For page metadata,
 
-                    `pg->young_allocated = <if there's young obj live>`
-
-                    `pg->old_marked1 = 0`
+                    * `pg->marked2 = pg->old_marked2 != 0`
+                    * `pg->marked1 = 0`
+                    * `pg->young_allocated = <if there's young obj live>`
+                    * `pg->old_marked1 = 0`
 
             4. Swap mark 1, 2
 
@@ -505,26 +507,30 @@ in the remset because the object they refer to are in the remset.
 
                 * `!pg->marked1` -> free page
 
-                    `pg->marked2 = 0`
+                    * `pg->marked2 = 0` (no-op)
 
                 * `!pg->young_allocated` -> use the free list
-                  **Different with sweep2**: do not check `old_marked` counters.
 
-                    `pg->old_marked2 = 0` (no-op, could skip)
+                    **Different with sweep2**: do not check `old_marked` counters
+
+                    * `pg->old_marked2 = 0` (no-op)
+                    * `pg->marked2 = 0` (no-op)
 
                 * slow path (actually sweep the page)
 
-                    * `!mark1` -> free cell
-                      (clear mark2, no-op, to be consistent with sweep2)
+                    For objects,
+
+                    * `!mark1` -> free cell (clear mark2, no-op)
                     * `mark1 & old` -> do nothing
                     * `mark1 & young & !age` -> clear mark1, set age
                     * `mark1 & young & age` -> clear mark1, set old
 
-                    `pg->marked1 = pg->old_marked1 != 0`
+                    For page metadata,
 
-                    `pg->young_allocated = <if there's young obj live>`
-
-                    `pg->old_marked2 = 0` (no-op, could skip)
+                    * `pg->marked1 = pg->old_marked1 != 0`
+                    * `pg->marked2 = 0` (no-op)
+                    * `pg->young_allocated = <if there's young obj live>`
+                    * `pg->old_marked2 = 0` (no-op)
 
     5. Swap remset 1, 2 (remset 2 should be empty after this)
     6. Clear old bit for objects in remset1.

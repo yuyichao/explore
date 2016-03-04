@@ -39,7 +39,7 @@ In summary, the new GC bits scheme consists of the following GC bits
 * Next mark bit:
 
     This is the new bit introduced in the scheme. When doing a full collection,
-    we use this bit instead of the mark bit instead for marking so that we
+    we use this bit instead of the mark bit for marking so that we
     don't need to reset the mark bit before the full marking. The meaning
     of this (next mark) bit and the mark bit will change after each full
     collection. This bit should never set on any valid memory region

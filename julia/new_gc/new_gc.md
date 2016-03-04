@@ -118,7 +118,7 @@ notation of mark1 and mark2 until the very end of the GC for clarity.
 
         * sweep2:
 
-            * !mark2
+            * `!mark2`
 
                 Free the object. This should also clear the mark1 bit so that
                 it can be used as a clean start the next time as mentioned
@@ -128,7 +128,7 @@ notation of mark1 and mark2 until the very end of the GC for clarity.
                 reading the gc bit in part of the page that are not
                 initialized / allocated during the sweep).
 
-            * mark2 & old
+            * `mark2 & old`
 
                 Do nothing (will become mark1 & old after swap the meaning).
                 This is the main case we don't want to do work. See also
@@ -137,11 +137,11 @@ notation of mark1 and mark2 until the very end of the GC for clarity.
                 (The mark1 bit should already be cleared during the marking
                 above).
 
-            * mark2 & young & !age
+            * `mark2 & young & !age`
 
                 Clean mark2, set age.
 
-            * mark2 & young & age
+            * `mark2 & young & age`
 
                 Clean mark2, set old. This set the object to be "promoted"
                 during the next GC.
@@ -152,19 +152,19 @@ notation of mark1 and mark2 until the very end of the GC for clarity.
 
         * sweep:
 
-            * !mark1
+            * `!mark1`
 
                 Free the object.
 
-            * mark1 & old
+            * `mark1 & old`
 
                 Do nothing.
 
-            * mark1 & young & !age
+            * `mark1 & young & !age`
 
                 Clean mark1, set age
 
-            * mark1 & young & age
+            * `mark1 & young & age`
 
                 Clean mark1, set old
 

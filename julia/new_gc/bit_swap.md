@@ -89,7 +89,7 @@ notation of mark1 and mark2 until the very end of the GC for clarity.
     only set to a fake value to avoid triggering the same write barrier
     multiple times).
 
-* mark1: mark global roots + remset1
+* Mark1: mark global roots + remset1
 
     This can possibly be skipped if the user explicitly asked for a full
     collection. If we decide to skip this in such cases, the mark2 phase
@@ -110,11 +110,11 @@ notation of mark1 and mark2 until the very end of the GC for clarity.
 
     * If doing full collection
 
-        * clear remset2
+        * Clear remset2
 
             We will repopulate it during the mark phase below.
 
-        * mark2: mark everything
+        * Mark2: mark everything
 
             * age: ignore (mark never has anything to do with the age)
             * mark1: clear (reset original mark bit during marking)
@@ -124,7 +124,7 @@ notation of mark1 and mark2 until the very end of the GC for clarity.
                 Put the object in the remset2 if it is an old object refering
                 young ones.
 
-        * sweep2:
+        * Sweep2:
 
             * `!mark2`
 
@@ -154,11 +154,11 @@ notation of mark1 and mark2 until the very end of the GC for clarity.
                 Clean mark2, set old. This set the object to be "promoted"
                 during the next GC.
 
-        * swap mark 1, 2
+        * Swap mark 1, 2
 
     * If not doing full collection
 
-        * sweep1:
+        * Sweep1:
 
             * `!mark1`
 
@@ -425,16 +425,15 @@ in the remset because the object they refer to are in the remset.
 * Collection
 
     1. Restore old bit for remset1
-    2. mark
+    2. Mark1 (Skip if a full collection is asked explicitly)
 
-        Start from global roots + remset1.
-        Skip if a full collection is asked explicitly
+        Start from global roots and remset1
 
         * mark1: clean -> marked
 
-              `pg->marked1 |= 1`
+            `pg->marked1 |= 1`
 
-              If this is old `pg->old_marked1 += 1`
+            If `old`, `pg->old_marked1 += 1`
 
         * mark2: clear (no-op, to be consistent with mark2)
 
@@ -445,14 +444,14 @@ in the remset because the object they refer to are in the remset.
             Put the object in the remset2 if it is an old object refering
             young ones.
 
-    3. clear remset1
+    3. Clear remset1
     4. Check heuristic (or user input argument) to decide whether a full
        collection is needed
 
         * If doing full collection
 
-            1. clear remset2
-            2. mark2
+            1. Clear remset2
+            2. Mark2
 
                 Start from global roots (and empty remset1)
 
@@ -474,7 +473,7 @@ in the remset because the object they refer to are in the remset.
                     Put the object in the remset2 if it is an old object
                     refering young ones.
 
-            3. sweep2
+            3. Sweep2
 
                 * `!pg->marked2` -> free page
 
@@ -482,6 +481,9 @@ in the remset because the object they refer to are in the remset.
 
                 * `pg->old_marked1 == pg->old_marked2 && !pg->young_allocated`
                   -> use the free list
+
+                    `pg->old_marked1 = 0`
+
                 * slow path (actually sweep the page)
 
                     * `!mark2` -> free cell (clear mark1 at the same time)
@@ -493,11 +495,13 @@ in the remset because the object they refer to are in the remset.
 
                     `pg->young_allocated = <if there's young obj live>`
 
-            4. swap mark 1, 2
+                    `pg->old_marked1 = 0`
+
+            4. Swap mark 1, 2
 
         * If not doing full collection
 
-            1. sweep1
+            1. Sweep1
 
                 * `!pg->marked1` -> free page
 
@@ -505,6 +509,9 @@ in the remset because the object they refer to are in the remset.
 
                 * `!pg->young_allocated` -> use the free list
                   **Different with sweep2**: do not check `old_marked` counters.
+
+                    `pg->old_marked2 = 0` (no-op, could skip)
+
                 * slow path (actually sweep the page)
 
                     * `!mark1` -> free cell
@@ -517,5 +524,7 @@ in the remset because the object they refer to are in the remset.
 
                     `pg->young_allocated = <if there's young obj live>`
 
-    5. swap remset 1, 2 (remset 2 should be empty after this)
+                    `pg->old_marked2 = 0` (no-op, could skip)
+
+    5. Swap remset 1, 2 (remset 2 should be empty after this)
     6. Clear old bit for objects in remset1.

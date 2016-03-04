@@ -89,7 +89,7 @@ notation of mark1 and mark2 until the very end of the GC for clarity.
     only set to a fake value to avoid triggering the same write barrier
     multiple times).
 
-* mark: mark global roots + remset1
+* mark1: mark global roots + remset1
 
     This can possibly be skipped if the user explicitly asked for a full
     collection. If we decide to skip this in such cases, the mark2 phase
@@ -158,7 +158,7 @@ notation of mark1 and mark2 until the very end of the GC for clarity.
 
     * If not doing full collection
 
-        * sweep:
+        * sweep1:
 
             * `!mark1`
 
@@ -408,3 +408,114 @@ This is essentially the same as the current write barrier implementation.
 The disadvantage is that it can put objects that are only refering old object
 in the remset because the object they refer to are in the remset.
 (i.e. this apprach collapse old wb-triggered with young promoting).
+
+## Summary for actually implementing this
+
+* Allocation
+
+    `pg->young_allocated = 1`
+
+* Write barrier
+
+    If `parent == old & marked && child == !marked`
+
+    * clear `parent.old`
+    * put `parent` in remset
+
+* Collection
+
+    1. Restore old bit for remset1
+    2. mark
+
+        Start from global roots + remset1.
+        Skip if a full collection is asked explicitly
+
+        * mark1: clean -> marked
+
+              `pg->marked1 |= 1`
+
+              If this is old `pg->old_marked1 += 1`
+
+        * mark2: clear (no-op, to be consistent with mark2)
+
+              `pg->marked2 = 0`
+
+        * preserve remset invariant
+
+            Put the object in the remset2 if it is an old object refering
+            young ones.
+
+    3. clear remset1
+    4. Check heuristic (or user input argument) to decide whether a full
+       collection is needed
+
+        * If doing full collection
+
+            1. clear remset2
+            2. mark2
+
+                Start from global roots (and empty remset1)
+
+                * mark2: clean -> marked
+
+                    `pg->marked2 |= 1`
+
+                    If this is old `pg->old_marked2 += 1`
+
+                    **Difference from mark1**:
+                    If `!mark1 && old` `pg->old_marked1 += 1`
+
+                * mark1: clear
+
+                    `pg->marked1 = 0`
+
+                * old: preserve remset invariant
+
+                    Put the object in the remset2 if it is an old object
+                    refering young ones.
+
+            3. sweep2
+
+                * `!pg->marked2` -> free page
+
+                    `pg->marked1 = 0`
+
+                * `pg->old_marked1 == pg->old_marked2 && !pg->young_allocated`
+                  -> use the free list
+                * slow path (actually sweep the page)
+
+                    * `!mark2` -> free cell (clear mark1 at the same time)
+                    * `mark2 & old` -> do nothing
+                    * `mark2 & young & !age` -> clear mark2, set age
+                    * `mark2 & young & age` -> clear mark2, set old
+
+                    `pg->marked2 = pg->old_marked2 != 0`
+
+                    `pg->young_allocated = <if there's young obj live>`
+
+            4. swap mark 1, 2
+
+        * If not doing full collection
+
+            1. sweep1
+
+                * `!pg->marked1` -> free page
+
+                    `pg->marked2 = 0`
+
+                * `!pg->young_allocated` -> use the free list
+                  **Different with sweep2**: do not check `old_marked` counters.
+                * slow path (actually sweep the page)
+
+                    * `!mark1` -> free cell
+                      (clear mark2, no-op, to be consistent with sweep2)
+                    * `mark1 & old` -> do nothing
+                    * `mark1 & young & !age` -> clear mark1, set age
+                    * `mark1 & young & age` -> clear mark1, set old
+
+                    `pg->marked1 = pg->old_marked1 != 0`
+
+                    `pg->young_allocated = <if there's young obj live>`
+
+    5. swap remset 1, 2 (remset 2 should be empty after this)
+    6. Clear old bit for objects in remset1.

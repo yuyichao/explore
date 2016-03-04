@@ -66,11 +66,12 @@ marking and for dead objects during the sweeping.
 
 ## GC bits manipulation during important GC procedures
 
-This is a break down of what we need to do in different parts of the GC. The
-main interfaces of the GC to the rest of the runtime are allocation, write
-barrier and the collection. Newly allocated objects are always clean and has
-no GC bits set. The operations we need to do for the collection and
-the write barrier are listed below
+This is a break down of what we need to do in different parts of the GC.
+The main interfaces of the GC to the rest of the runtime are allocation,
+write barrier and the collection.
+Newly allocated objects are always clean and has no GC bits set.
+The operations we need to do for the collection and the write barrier are
+listed below.
 
 ### Collection
 For the description below, mark1 is always the current mark bit when entering

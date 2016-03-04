@@ -248,9 +248,10 @@ An important optimization that we want (which is also used currently) is to
 be able to skip sweeping a page completely if we don't need to write anything
 to the page.
 
-For a page in the free list, this happens if we already have the free list in
-place (i.e. we haven't allocated anything) and all the live objects are old
-(i.e. we don't need to clear the marked bit).
+For a page in the free list, this happens if all the free cells are already
+in the free list (i.e. we haven't allocated anything and there's no new free
+cells) and all the live objects are old (i.e. we don't need to clear the
+marked bit).
 
 The other case is if the page will not be in the freelist at all, i.e. if the
 whole page is free. As mentioned above, one thing to be careful for this case
@@ -285,4 +286,5 @@ These two cases can be detected using two bookkeeping bit in the page metadata.
     If a page has this bit clear when entering the sweep phase, the cells are
     either in the free list (non-allocated) or old. (**There could still be old
     and dead object so we can't skip this page?** Still need a old object
-    counter??)
+    counter?? This is only a problem for sweep2 since there's no old and dead
+    object for the normal sweep).

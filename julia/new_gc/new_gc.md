@@ -243,14 +243,46 @@ This is essentially the same with the current write barrier implementation.
 The disadvantage is that it can put objects that are only refering old object
 in the remset because the object they refer to are in the remset.
 
-# Opt for sweep
-We want to avoid sweeping the page unnecessarily
-* If the page is free we don't need to do anything but we might have invalid
-  bit pattern in the page. We need to make sure during the next sweep that
-  we only look for the part of the page that is allocated and therefore has
-  the GC bits fixed.
+## Optimization for sweep
+An important optimization that we want (which is also used currently) is to
+be able to skip sweeping a page completely if we don't need to write anything
+to the page.
 
-* If every live objects are old and the free list covers all the rest then
-  we just need to chain in the free list
+For a page in the free list, this happens if we already have the free list in
+place (i.e. we haven't allocated anything) and all the live objects are old
+(i.e. we don't need to clear the marked bit).
 
-Two bits to keep:
+The other case is if the page will not be in the freelist at all, i.e. if the
+whole page is free. As mentioned above, one thing to be careful for this case
+during the full sweep is that there might be left over old mark bit on the
+page that can confuse the next sweep. Therefore, we need to make sure during
+the next sweep we only look for the part of the page that is allocated and
+therefore has the GC bits fixed.
+
+These two cases can be detected using two bookkeeping bit in the page metadata.
+
+1. A bit for whether any objects in the page are marked.
+
+    This should be updated whenever the marked bit is changed.
+
+    * The allocator always allocate clean object so this is not affected.
+    * The wb might change this bit depending on our choice but it is always
+      fixed before entering the GC so this is fine.
+    * The marking need to update the page metadata when marking a pool object
+    * The sweep should clear this bit if there's no old object in the page.
+
+    If a page has this bit set when entering the sweep phase, there's live
+    objects in the page and the page is not a free page. Otherwise, the page
+    is empty and can be freed directly.
+
+2. A bit for whether there's any young allocated cell.
+
+    This should be updated whenever there's allocation or when the old bit
+    is changed, i.e. the allocator should set this bit and the sweep should
+    set this depending on if there's any young and live object left in the
+    page.
+
+    If a page has this bit clear when entering the sweep phase, the cells are
+    either in the free list (non-allocated) or old. (**There could still be old
+    and dead object so we can't skip this page?** Still need a old object
+    counter??)

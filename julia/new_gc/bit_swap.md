@@ -54,14 +54,15 @@ In summary, the new GC bits scheme consists of the following GC bits
 One challenge for the GC bit swap scheme is to keep the invariance (that the
 next mark bit never escape the GC) mentioned above valid. This should be done
 without having to reset the bit for old live objects during the final sweep
-since that means we are back to sweeping the whole heap. The current scheme
-is based on another observation that after flipping the bit, the only objects
-with the marked bit set are the old objects. The live old object will be visited
-during the full mark phase (by definition) and the dead old object needs to be
-swept (i.e. freed) during the sweep phase (since this is the whole point of
-doing a full collection at all). Therefore, we can reset the original mark bit
-for live objects during the full marking and for dead objects during
-the sweeping.
+since that means we are back to sweeping the whole heap.
+The current scheme is based on another observation that
+we will do a full mark and full sweep after swapping the bit.
+Therefore, the live objects will be visited during the full mark phase
+(by definition) and the dead old object needs to be swept (i.e. freed)
+during the sweep phase
+(since this is the whole point of doing a full collection at all).
+Therefore, we can reset the original mark bit for live objects during the full
+marking and for dead objects during the sweeping.
 
 ## GC bits manipulation during important GC procedures
 

@@ -19,15 +19,11 @@ card have any reference to young object.
     The write barrier should be able to easily find the address of the card
     table given the array and the address written to.
 
-    The card table can be global or per-array. For global table,
-    the table can be statically allocated and initialized at link time.
-    For per-array table, since we support array resizing
-    and user supplied buffers, the address can't be stored at a know offset
-    relative to the buffer or the array and has to be stored as a pointer
-    in the array object.
-
-    We choose to use a **global card table** in order to make the write barrier
-    check cheaper.
+    The card table can be global or per-array.
+    For global table, the table can be statically allocated and initialized at
+    link time.
+    For per-array table, the card table need to be stored as a pointer in the
+    array since we support user supply buffers and shared buffers.
 
 * Bits vs bytes
 
@@ -36,32 +32,45 @@ card have any reference to young object.
     of bytes is faster access (no mask needed) and faster concurrent update
     (no lock/retry needed).
 
-    For a global statically allocated card table, it is important to keep
-    the size per card small in order to minimize the size
-    and conflict probability (if the global table cannot assign a unique bit
-    to every card) so we'll use a bit per card.
-
 * Card size
 
     Larger card size means smaller table size and less write barrier triggers.
     Smaller card size means more precise write barrier.
 
+After doing some benchmarks, it seems that the bit shifting and masking
+necessary to access a per-bit card table is too expensive.
 
-The HotSpot GC uses 512 bytes card size and a byte per card. However,
-it is used for unconditional write barrier for the whole managed heap
-without (AFAIK) additional object-level remset so concurrent updating
-and card precision is very important. On the other hand,
-we'd like to use it for conditional write barrier for only array buffers
-(which can be user supplied) so we need to possibly handle a much larger
-address range but can also tolerate slow concurrent write (the fast path
-will only read) and larger card size (we have more accurate marking for
-normal objects). Therefore, the choice of sizes is the following,
+* To access a bit in the card table (with known card table address) it takes,
 
-card size: 1024 bytes per bit (128 ptrs on 64 bits and 256 ptrs on 32 bits)
-8 cards per byte
-512 kB card table (covers the whole 4 GB address space) on 32 bit
-8 MB card table (64 GB address space) on 64 bit
+    1. 3 bit shifts (bit number, byte address, bit mask)
+    2. 2 masks (bit number, bit mask, one more for byte address if the global
+       card table cannot cover the whole address space)
+    3. one load (of the card byte)
+    4. one indexing
+    5. one comparison
 
-For future improvement, we could make some of the parameters fixed at
-init time/runtime and use `mmap` with address hint to avoid card table
-clashing for pointer arrays.
+* To access a byte in the card table (with known card table address) it takes,
+
+    1. 1 bit shifts (byte address)
+    2. 0 masks (one for byte address if the global card table cannot cover
+       the whole address space)
+    3. one load (of the card byte)
+    4. one indexing
+    5. one comparison
+
+Therefore, comparing a global table (which almost has to be using bits to save
+space, and almost certainly can't cover the whole address space on 64bit) with
+a per-array table (which can use bytes), the per-array table saves 2 bit shifts
+and 3 masks operations.
+The per-array table requires one more load from the array to get the table
+address. However, it saves the load of the array flags, the branch associated
+with it and the load+mask of the gc bit (since only the card table need to be
+checked and not the array object tag) so this is likely a win in general.
+The load of the card table can possibly be avoided for high dimensional array
+by saving it on stack (like what we do with length, size and ptr) and for one
+dimensional arrays in some cases by making it clear to LLVM that the write
+barrier doesn't change the array pointer and the card table pointer
+(using `llvm.assume`).
+
+For card size, we'll just follow the Java HotSpot GC and use 512 bytes per
+card byte.

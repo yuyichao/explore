@@ -1,6 +1,6 @@
 #!/usr/bin/julia -f
 
-using SoArrays
+using StructsOfArrays
 
 function f1(x, a)
     s = zero(eltype(x))
@@ -30,7 +30,7 @@ end
 
 r = Float32[1:1024;]
 c = Complex64[1:1024;]
-sc = convert(SoArray, c)
+sc = convert(StructOfArrays, c)
 
 @time g1(1, r, 1.0f0)
 @time g1(1, c, 1.0f0im)

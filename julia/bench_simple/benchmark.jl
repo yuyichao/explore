@@ -47,20 +47,20 @@ function scale1(b, a, s)
     end
 end
 
-function get_aligned_rand{T}(::Type{T}, n)
+function get_aligned_ones{T}(::Type{T}, n)
     while true
-        ary = rand(T, n)
+        ary = ones(T, n)
         Int(pointer(ary)) % 64 == 0 && return ary
     end
 end
 
-ary32_small = get_aligned_rand(Float32, 1024)
-ary64_small = get_aligned_rand(Float64, 1024)
-ary32_small2 = get_aligned_rand(Float32, 1024)
-ary64_small2 = get_aligned_rand(Float64, 1024)
+ary32_small = get_aligned_ones(Float32, 1024)
+ary64_small = get_aligned_ones(Float64, 1024)
+ary32_small2 = get_aligned_ones(Float32, 1024)
+ary64_small2 = get_aligned_ones(Float64, 1024)
 
-ary32_big = rand(Float32, 8 * 1024^2)
-ary64_big = rand(Float64, 8 * 1024^2)
+ary32_big = ones(Float32, 8 * 1024^2)
+ary64_big = ones(Float64, 8 * 1024^2)
 ary32_big2 = copy(ary32_big)
 ary64_big2 = copy(ary64_big)
 

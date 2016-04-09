@@ -1,0 +1,50 @@
+ASCII:
+4 utf8(sp)
+     Time per evaluation: 49.08 ns [47.97 ns, 50.18 ns]
+4 utf8(sp,4)
+     Time per evaluation: 46.68 ns [45.58 ns, 47.78 ns]
+4 ascii(sp)
+     Time per evaluation: 53.22 ns [51.97 ns, 54.46 ns]
+4 ascii(sp,4)
+     Time per evaluation: 49.99 ns [48.80 ns, 51.18 ns]
+40 utf8(sp)
+     Time per evaluation: 52.40 ns [51.24 ns, 53.55 ns]
+40 utf8(sp,4)
+     Time per evaluation: 46.85 ns [45.76 ns, 47.94 ns]
+40 ascii(sp)
+     Time per evaluation: 72.18 ns [70.53 ns, 73.83 ns]
+40 ascii(sp,4)
+     Time per evaluation: 50.01 ns [48.88 ns, 51.15 ns]
+400 utf8(sp)
+     Time per evaluation: 86.18 ns [85.02 ns, 87.33 ns]
+400 utf8(sp,4)
+     Time per evaluation: 46.89 ns [45.74 ns, 48.04 ns]
+400 ascii(sp)
+     Time per evaluation: 247.54 ns [242.22 ns, 252.86 ns]
+400 ascii(sp,4)
+     Time per evaluation: 49.80 ns [48.66 ns, 50.95 ns]
+4000 utf8(sp)
+     Time per evaluation: 460.85 ns [454.41 ns, 467.28 ns]
+4000 utf8(sp,4)
+     Time per evaluation: 46.80 ns [45.70 ns, 47.90 ns]
+4000 ascii(sp)
+     Time per evaluation: 1.24 μs [1.21 μs, 1.27 μs]
+4000 ascii(sp,4)
+     Time per evaluation: 50.20 ns [49.09 ns, 51.30 ns]
+UTF8:
+4 utf8(sp)
+     Time per evaluation: 50.71 ns [49.57 ns, 51.85 ns]
+4 utf8(sp,8)
+     Time per evaluation: 46.62 ns [45.54 ns, 47.70 ns]
+40 utf8(sp)
+     Time per evaluation: 77.38 ns [75.84 ns, 78.93 ns]
+40 utf8(sp,8)
+     Time per evaluation: 46.94 ns [45.81 ns, 48.08 ns]
+400 utf8(sp)
+     Time per evaluation: 207.15 ns [202.83 ns, 211.48 ns]
+400 utf8(sp,8)
+     Time per evaluation: 46.64 ns [45.54 ns, 47.74 ns]
+4000 utf8(sp)
+     Time per evaluation: 660.68 ns [650.46 ns, 670.91 ns]
+4000 utf8(sp,8)
+     Time per evaluation: 46.60 ns [45.54 ns, 47.65 ns]

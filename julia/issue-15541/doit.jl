@@ -6,27 +6,27 @@
     end
 end
 
-# @noinline function with_gc_frame(n::Int)
-#     for s = 1:n
-#         Ref(s)
-#     end
-# end
+@noinline function with_gc_frame(n::Int)
+    for s = 1:n
+        Ref(s)
+    end
+end
 
-# @noinline f(a, b) = b
+@noinline f(a, b) = b
 
-# @noinline function unstable_no_alloc(n::Int)
-#     a = Ref(1)
-#     b = Ref(1.0)
-#     for s = 1:n
-#         a = f(a, b)
-#     end
-#     a
-# end
+@noinline function unstable_no_alloc(n::Int)
+    a = Ref(1)
+    b = Ref(1.0)
+    for s = 1:n
+        a = f(a, b)
+    end
+    a
+end
 
 function main()
-    @time bare_gc(2_000_000_000)
-    # @time with_gc_frame(1000_000_000)
-    # @time unstable_no_alloc(200_000_000)
+    @time bare_gc(4_600_000_000)
+    @time with_gc_frame(4_600_000_000)
+    @time unstable_no_alloc(4_600_000_000)
 end
 
 main()

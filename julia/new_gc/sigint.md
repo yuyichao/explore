@@ -32,3 +32,42 @@ Therefore we can also implement a threshold to triggle non-blockable exception
 Additionally, we can use the safepoint as the mechanism to synchronize between
 the worker threads and the signal handling thread so that `sigatomic` doesn't
 have to use expensive atomic read-modify-write operations.
+
+## Issues to consider
+
+Since the GC safepoint is used, well, for the GC in multi-threading build,
+we need to make sure the two functions doesn't conflict.
+When we triggerred a safepoint, we need to check what action we should take.
+
+* If we are waiting in GC on one thread, we should set the right flag and wait
+  for the GC to finish. This involves synchronization with the GC thread
+  using `ptls->gc_state` and `jl_gc_running`.
+
+* Otherwise, we should check if we need to deliver a `SIGINT`.
+  This involves synchronizing with other threads
+  (including the signal handling thread) using a TBD global variable.
+
+    * If we are not handling the signal, the other thread should have
+      already un-armed the safepoint while we are waiting for the `SIGINT` lock
+      so we can just return.
+      (If the safepoint is re-armed again we will simple enter the handler
+      again, which is fine too.)
+
+    * If we are handling the signal, we should first un-arm the safepoint
+      as mentioned above. This needs to be synchronized with the possible
+      GC thread (we need an atomic counter or lock) to decide who is
+      calling `mprotect` on the page.
+
+      After that, we need to check if we are in a `sigatomic` region.
+      If we are not, we can simply unset the signal pending flag
+      (and possible un-`mprotect` another signaling page) and
+      throw the exception.
+      If we are in a `sigatomic` region, the signal pending flag should
+      already be set (and signal page enabled) so can just return
+      and wait for the end of the `sigatomic` region to check the pending flag.
+
+When we get an external `SIGINT`, we need to set the signal pending flag
+and enable the GC safepoint.
+
+When we leave a `sigatomic` region, we should check the signal pending flag
+if the sigatomic counter drops back down to `0`.

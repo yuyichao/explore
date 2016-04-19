@@ -198,7 +198,7 @@ __attribute__((noinline)) uint64_t time3(size_t n)
 {
     uint64_t start = gettime_ns(CLOCK_MONOTONIC);
     for (size_t i = 0;i < n;i++) {
-        f2();
+        f3();
     }
     uint64_t end = gettime_ns(CLOCK_MONOTONIC);
     return end - start;
@@ -208,7 +208,7 @@ __attribute__((noinline)) uint64_t time4(size_t n)
 {
     uint64_t start = gettime_ns(CLOCK_MONOTONIC);
     for (size_t i = 0;i < n;i++) {
-        f2();
+        f4();
     }
     uint64_t end = gettime_ns(CLOCK_MONOTONIC);
     return end - start;

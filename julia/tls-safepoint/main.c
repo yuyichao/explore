@@ -220,8 +220,8 @@ void runall(void)
     uint64_t t0 = time0(n);
     uint64_t t1 = time1(n);
     uint64_t t2 = time2(n);
-    uint64_t t3 = time1(n);
-    uint64_t t4 = time2(n);
+    uint64_t t3 = time3(n);
+    uint64_t t4 = time4(n);
     printf("%f, %f, %f, %f, %f\n", t0 * 4.6 / n, t1 * 4.6 / n,
            t2 * 4.6 / n, t3 * 4.6 / n, t4 * 4.6 / n);
 }

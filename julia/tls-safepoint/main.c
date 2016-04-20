@@ -5,6 +5,14 @@
 #include <stdint.h>
 #include <time.h>
 
+void safepoint_load(volatile size_t *load)
+{
+    __atomic_signal_fence(__ATOMIC_SEQ_CST);
+    size_t dummy = *load;
+    __atomic_signal_fence(__ATOMIC_SEQ_CST);
+    (void)dummy;
+}
+
 typedef struct _stack {
     size_t n;
     struct _stack *parent;
@@ -59,20 +67,17 @@ __attribute__((noinline)) void f1(void)
     s->ptrs[0] = NULL;
     s->parent = buff->sp;
     __atomic_store_n(&buff->state, 1, __ATOMIC_RELEASE);
-    size_t dummy = *load;
+    safepoint_load(load);
     buff->sp = s;
     __atomic_store_n(&buff->state, 0, __ATOMIC_RELEASE);
-    dummy = *load;
 
     work();
 
     // gc_pop
     __atomic_store_n(&buff->state, 1, __ATOMIC_RELEASE);
-    dummy = *load;
+    safepoint_load(load);
     buff->sp = s->parent;
     __atomic_store_n(&buff->state, 0, __ATOMIC_RELEASE);
-    dummy = *load;
-    (void)dummy;
 }
 
 __attribute__((noinline)) void f2(void)
@@ -85,20 +90,17 @@ __attribute__((noinline)) void f2(void)
     s->ptrs[0] = NULL;
     s->parent = buff->sp;
     __atomic_store_n(&buff->state, 1, __ATOMIC_RELEASE);
-    size_t dummy = *load;
+    safepoint_load(load);
     buff->sp = s;
     __atomic_store_n(&buff->state, 0, __ATOMIC_RELEASE);
-    dummy = *load;
 
     work();
 
     // gc_pop
     __atomic_store_n(&buff->state, 1, __ATOMIC_RELEASE);
-    dummy = *load;
+    safepoint_load(load);
     buff->sp = s->parent;
     __atomic_store_n(&buff->state, 0, __ATOMIC_RELEASE);
-    dummy = *load;
-    (void)dummy;
 }
 
 __attribute__((noinline)) void f3(void)
@@ -110,20 +112,17 @@ __attribute__((noinline)) void f3(void)
     s->ptrs[0] = NULL;
     s->parent = buff->sp;
     buff->state = 1;
-    size_t dummy = *load;
+    safepoint_load(load);
     buff->sp = s;
     buff->state = 0;
-    dummy = *load;
 
     work();
 
     // gc_pop
     buff->state = 1;
-    dummy = *load;
+    safepoint_load(load);
     buff->sp = s->parent;
     buff->state = 0;
-    dummy = *load;
-    (void)dummy;
 }
 
 __attribute__((noinline)) void f4(void)
@@ -136,20 +135,17 @@ __attribute__((noinline)) void f4(void)
     s->ptrs[0] = NULL;
     s->parent = buff->sp;
     buff->state = 1;
-    size_t dummy = *load;
+    safepoint_load(load);
     buff->sp = s;
     buff->state = 0;
-    dummy = *load;
 
     work();
 
     // gc_pop
     buff->state = 1;
-    dummy = *load;
+    safepoint_load(load);
     buff->sp = s->parent;
     buff->state = 0;
-    dummy = *load;
-    (void)dummy;
 }
 
 static uint64_t time2u64(const struct timespec *time)

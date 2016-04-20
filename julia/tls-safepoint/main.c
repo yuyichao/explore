@@ -5,10 +5,10 @@
 #include <stdint.h>
 #include <time.h>
 
-void safepoint_load(volatile size_t *load)
+void safepoint_load(volatile int32_t *load)
 {
     __atomic_signal_fence(__ATOMIC_SEQ_CST);
-    size_t dummy = *load;
+    int32_t dummy = *load;
     __atomic_signal_fence(__ATOMIC_SEQ_CST);
     (void)dummy;
 }
@@ -21,29 +21,34 @@ typedef struct _stack {
 
 typedef struct {
     stack *sp;
-    volatile size_t *load;
+    volatile int32_t *load;
     volatile int32_t state;
 } tlsbuff;
 
 __attribute__((noinline)) tlsbuff *get_tls(void)
 {
-    static size_t v;
+    static int32_t v;
     static __thread __attribute__((tls_model("local-exec"))) tlsbuff buff = {
         NULL, &v, 0
     };
     return &buff;
 }
 
+static tlsbuff buff0 = {NULL, NULL, 0};
+
 __attribute__((noinline)) void work(void)
 {
     for (volatile int i = 0;i < 10;i++) {
+        int32_t dummy = buff0.state;
+        (void)dummy;
+        stack *dummy2 = *(stack *volatile*)&buff0.sp;
+        (void)dummy2;
         __asm__ volatile ("" ::: "memory");
     }
 }
 
 __attribute__((noinline)) void f0(void)
 {
-    static tlsbuff buff0 = {NULL, NULL, 0};
     tlsbuff *buff = &buff0;
     // gc_push
     stack *s = (stack*)alloca(sizeof(void*) * 3);
@@ -61,7 +66,7 @@ __attribute__((noinline)) void f0(void)
 __attribute__((noinline)) void f1(void)
 {
     tlsbuff *buff = get_tls();
-    volatile size_t *load = buff->load;
+    volatile int32_t *load = buff->load;
     stack *s = (stack*)alloca(sizeof(void*) * 3);
     s->n = 1;
     s->ptrs[0] = NULL;
@@ -83,8 +88,8 @@ __attribute__((noinline)) void f1(void)
 __attribute__((noinline)) void f2(void)
 {
     tlsbuff *buff = get_tls();
-    static volatile size_t val;
-    volatile size_t *load = &val;
+    static volatile int32_t val;
+    volatile int32_t *load = &val;
     stack *s = (stack*)alloca(sizeof(void*) * 3);
     s->n = 1;
     s->ptrs[0] = NULL;
@@ -106,7 +111,7 @@ __attribute__((noinline)) void f2(void)
 __attribute__((noinline)) void f3(void)
 {
     tlsbuff *buff = get_tls();
-    volatile size_t *load = buff->load;
+    volatile int32_t *load = buff->load;
     stack *s = (stack*)alloca(sizeof(void*) * 3);
     s->n = 1;
     s->ptrs[0] = NULL;
@@ -128,8 +133,8 @@ __attribute__((noinline)) void f3(void)
 __attribute__((noinline)) void f4(void)
 {
     tlsbuff *buff = get_tls();
-    static volatile size_t val;
-    volatile size_t *load = &val;
+    static volatile int32_t val;
+    volatile int32_t *load = &val;
     stack *s = (stack*)alloca(sizeof(void*) * 3);
     s->n = 1;
     s->ptrs[0] = NULL;

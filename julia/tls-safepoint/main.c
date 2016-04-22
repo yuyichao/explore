@@ -7,9 +7,11 @@
 
 void safepoint_load(volatile int32_t *load)
 {
-    __atomic_signal_fence(__ATOMIC_SEQ_CST);
+    __asm__ volatile("" ::: "memory");
+    /* __atomic_signal_fence(__ATOMIC_SEQ_CST); */
     int32_t dummy = *load;
-    __atomic_signal_fence(__ATOMIC_SEQ_CST);
+    __asm__ volatile("" ::: "memory");
+    /* __atomic_signal_fence(__ATOMIC_SEQ_CST); */
     (void)dummy;
 }
 

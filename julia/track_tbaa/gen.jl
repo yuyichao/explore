@@ -9,7 +9,7 @@ function collect_to2!{T}(dest::AbstractArray{T}, itr)
     st = start(itr.iter)
     while !done(itr.iter, st)
         el, st = next(itr.iter, st)
-        @inbounds dest[i] = el
+        @inbounds dest[i] = el / 10
         i += 1
     end
     return dest

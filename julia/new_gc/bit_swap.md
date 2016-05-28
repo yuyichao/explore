@@ -238,7 +238,7 @@ write barrier check but might result in false positives.
 ## Optimization for sweep
 An important optimization that we want (which is also used currently) is to
 be able to skip sweeping a page completely if we don't need to **write**
-anything to the page (i.e. not writing to it either). Since we would like to
+anything to the page (i.e. not reading from it either). Since we would like to
 figure these out without actually reading the page, it is necessary to keep
 some out-of-band information in the page metadata. These metadata are generally
 a summary of the gc bits in the page and therefore should be updated whenever
@@ -258,8 +258,8 @@ the metadata when the write barrier triggers.
     allocated and therefore has the GC bits fixed.
 
     For detecting this case during the sweep, we need to know if there's
-    any live cells in the page. This can be done by keeping a bit for whether
-    any objects in the page are marked. This bit should be updated whenever
+    any live cells in the page. This can be done by **keeping a bit for whether
+    any objects in the page are marked**. This bit should be updated whenever
     the marked bit is changed. If a page has this bit set when entering the
     sweep phase, there's live objects in the page and the page is not a free
     page. Otherwise, the page is empty and can be freed directly.
@@ -302,7 +302,7 @@ the metadata when the write barrier triggers.
     One of the information we can keep track of is that if there were any young
     allocated cell when entering the GC (including young live ones from the
     last GC and newly allocated ones since the last GC). This bit should be
-    set or cleared by the sweep (1 and 2) depending of if there's any young
+    set or cleared by the sweep (1 and 2) depending on if there's any young
     cells in the page and set by the allocator when it starts to allocate
     in a page.
 

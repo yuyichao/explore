@@ -13,10 +13,10 @@ also confusing and imprecise so we'd like to fix this at the same time.
 ## GC bits
 
 The main idea of the change is based on the observation that we don't really
-need to change the GC marked bit. Instead, we could ignore the mark bit during
+need to change the GC mark bit. Instead, we could ignore the mark bit during
 the marking phase and using a different bit for the actual marking instead.
 At the same time, we also decide to completely separate the old bit and the
-marked bit so that whether an object is old or young can be determined by a
+mark bit so that whether an object is old or young can be determined by a
 single bit instead of `marked ^ queued`.
 
 In summary, the new GC bits scheme consists of the following GC bits
@@ -33,8 +33,9 @@ In summary, the new GC bits scheme consists of the following GC bits
 * Mark bit:
 
     This bit means that the object is live. During the mark phase, this either
-    mean the object is old and should be ignore, or it is already visited by
-    the GC. (When we are using the new mark bit for marking, we may also refer
+    means that the object is old and should be ignore, or it is already visited
+    by the GC.
+    (When we are using the new mark bit for marking, we may also refer
     to this bit as the original mark bit for clarity.)
 
 * Next mark bit:
@@ -43,9 +44,9 @@ In summary, the new GC bits scheme consists of the following GC bits
     we use this bit instead of the mark bit for marking so that we
     don't need to reset the mark bit before the full marking. The meaning
     of this (next mark) bit and the mark bit will change after each full
-    collection. This bit should never set on any valid memory region
-    (i.e. any memory that are reachable during the marking phase or
-    needs to be read during the sweeping phase) outside (and when entering) the
+    collection. This bit should never be set on any valid memory region
+    (i.e. any memory that is reachable during the mark phase or
+    needs to be read during the sweep phase) outside (and when entering) the
     GC. This invariance is necessary so that we can use this bit as a clean
     mark bit during the full marking phase. We could add optimizations to
     ignore this bit in invalid memory area (e.g. non-allocated area at the end

@@ -28,7 +28,7 @@ end
 end
 
 function run_tests()
-    n = 10^6
+    n = 10^7
     x = rand(n)
     y = zeros(n)
     # @code_llvm test1!(y, x)

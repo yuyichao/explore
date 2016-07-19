@@ -14,7 +14,7 @@ const sin_ptr = Ref{Ptr{Void}}()
                    call void @llvm.assume(i1 %2)
                    ret void
                    """), Void, Tuple{Bool},
-                   sp != C_NULL)
+                  sp != C_NULL)
     s = 0.0
     for i = 1:n
         s += call_ptr(sp, 1.0)
@@ -31,22 +31,29 @@ macro time2(ex)
     quote
         stats = Base.gc_num()
         $(esc(ex))
-        Base.GC_Diff(stats, stats)
+        # Base.GC_Diff(stats, stats)
     end
 end
 
 @noinline function run_tests()
     n = 10^6
     test1!(n)
-    @time2 for i in 1:10
+    @time2 for i in 1:20
         test1!(n)
     end
 end
 
+@noinline function yield2()
+    current_task().state == :runnable || error()
+end
+
 function wrapper()
-    @time run_tests()
-    yield()
-    @time run_tests()
+    run_tests()
+    t1 = @elapsed run_tests()
+    yield2()
+    t2 = @elapsed run_tests()
+    @show t1
+    @show t2
 end
 
 # @show @code_lowered run_tests()

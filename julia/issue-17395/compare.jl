@@ -27,20 +27,21 @@ end
     y
 end
 
+@noinline function yield2()
+    current_task().state == :runnable || error()
+end
+
 function run_tests()
     n = 10^7
     x = rand(n)
     y = zeros(n)
     # @code_llvm test1!(y, x)
     # test1!(y, x)
-    # Threads.@threads for i in 1:100
-    #     Threads.threadid() == 1 && continue
-    #     # sin(0)
-    #     # cos(0)
-    #     sin(1)
-    #     cos(1)
-    # end
-    # yield()
+    Threads.@threads for i in 1:100
+        sin(1)
+        cos(1)
+        yield2()
+    end
     @time for i in 1:10
         test1!(y, x)
     end

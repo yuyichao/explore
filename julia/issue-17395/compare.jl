@@ -28,19 +28,19 @@ end
 end
 
 function run_tests()
-    n = 10^7
+    n = 10^6
     x = rand(n)
     y = zeros(n)
     # @code_llvm test1!(y, x)
     # test1!(y, x)
-    Threads.@threads for i in 1:100
-        Threads.threadid() == 1 && continue
-        # sin(0)
-        # cos(0)
-        sin(1)
-        cos(1)
-    end
-    yield()
+    # Threads.@threads for i in 1:100
+    #     Threads.threadid() == 1 && continue
+    #     # sin(0)
+    #     # cos(0)
+    #     sin(1)
+    #     cos(1)
+    # end
+    # yield()
     @time for i in 1:10
         test1!(y, x)
     end

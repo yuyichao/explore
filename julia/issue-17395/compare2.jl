@@ -15,19 +15,42 @@ const sin_ptr = Ref{Ptr{Void}}()
                    ret void
                    """), Void, Tuple{Bool},
                    sp != C_NULL)
+    s = 0.0
     for i = 1:n
-        call_ptr(sp, 1.0)
+        s += call_ptr(sp, 1.0)
+        # s += Core.Intrinsics.llvmcall(("declare double @sin(double);",
+        #                           """
+        #                           %a = call double @sin(double %0)
+        #                           ret double %a"""),
+        #                          Cdouble, Tuple{Cdouble}, reinterpret(Float64, i))
+    end
+    s
+end
+
+macro time2(ex)
+    quote
+        stats = Base.gc_num()
+        $(esc(ex))
+        Base.GC_Diff(stats, stats)
     end
 end
 
-function run_tests()
+@noinline function run_tests()
     n = 10^6
     test1!(n)
-    @time for i in 1:10
+    @time2 for i in 1:10
         test1!(n)
     end
 end
 
+function wrapper()
+    @time run_tests()
+    yield()
+    @time run_tests()
+end
+
+# @show @code_lowered run_tests()
+
 println("libopenlibm")
 sin_ptr[] = cglobal((:sin, "libopenlibm"))
-run_tests()
+wrapper()

@@ -1,21 +1,18 @@
 #!/usr/bin/julia -f
 
-using Base.Threads
-
 srand(0)
-
-global f(x::Val{0}) = 1
-global f(x) = 0
-const counter = Atomic{Int}(1)
 
 println(getpid())
 
 ex = quote
+    f(x::Val{0}) = 1
+    f(x) = 0
+    const counter = Atomic{Int}(1)
     for j in 1:10
-        println(j)
+        # println(j)
         @threads for i in 1:10
-            ccall(:jl_, Void, (Any,), i)
-            for k in 1:10
+            # ccall(:jl_, Void, (Any,), i)
+            for k in 1:100
                 r = rand() * 5
                 if r < 1
                     @gensym T
@@ -34,6 +31,14 @@ ex = quote
     end
 end
 
-for k in 1:1000
-    eval(ex)
+for k in 1:100
+    mod_ex = quote
+        module $(Symbol("M", k))
+        using Base.Threads
+        $ex
+        end
+    end
+    mod_ex.head = :toplevel
+    println(k)
+    @time eval(mod_ex)
 end

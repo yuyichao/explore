@@ -1,0 +1,15 @@
+scale_nothread
+10^4  0.069763 seconds
+10^5  0.071074 seconds
+scale_nothread_ib
+10^4  0.029852 seconds
+10^5  0.038468 seconds
+scale_nothread_simd
+10^4  0.029841 seconds
+10^5  0.038467 seconds
+scale_thread
+10^4  0.081919 seconds (20.00 k allocations: 625.000 KB)
+10^5  0.077617 seconds (2.00 k allocations: 62.500 KB)
+scale_thread_ib
+10^4  0.033486 seconds (20.00 k allocations: 625.000 KB)
+10^5  0.039227 seconds (2.00 k allocations: 62.500 KB)

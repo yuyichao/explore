@@ -1,0 +1,194 @@
+\documentclass{beamer}
+\mode<presentation>{
+  \usetheme{Boadilla}
+  \usefonttheme[onlylarge]{structurebold}
+  \usefonttheme[stillsansseriflarge]{serif}
+  \setbeamerfont*{frametitle}{size=\normalsize,series=\bfseries}
+  % \setbeamertemplate{navigation symbols}{}
+  \setbeamercovered{transparent}
+}
+\usepackage[english]{babel}
+% \usepackage[latin1]{inputenc}
+\usepackage[BoldFont,SlantFont,CJKnumber,fallback]{xeCJK}
+\setmainfont{DejaVu Serif}
+\setsansfont{DejaVu Sans}
+\setmonofont{DejaVu Sans Mono}
+\setCJKmainfont{Droid Sans Fallback}
+\setCJKsansfont{Droid Sans Fallback}
+\usepackage{times}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{esint}
+\usepackage{hyperref}
+\usepackage{tikz}
+\usepackage{xkeyval}
+\usepackage{xargs}
+\usepackage{verbatim}
+\usepackage{listings}
+\usepackage{multimedia}
+\usepackage{pgfplots}
+\usepgfplotslibrary{colormaps}
+\usetikzlibrary{
+  arrows,
+  calc,
+  decorations.pathmorphing,
+  decorations.pathreplacing,
+  decorations.markings,
+  fadings,
+  positioning,
+  shapes
+}
+
+\pgfdeclareradialshading{glow}{\pgfpoint{0cm}{0cm}}{
+  color(0mm)=(white);
+  color(3mm)=(white);
+  color(7mm)=(black);
+  color(10mm)=(black)
+}
+\pgfdeclareverticalshading{beam}{2cm}{
+  % manual 1082-1083; later - shading is assumed to be 100bp diameter ??
+  color(0cm)=(black);
+  color(0.3cm)=(black);
+  color(1cm)=(white);
+  color(1.7cm)=(black);
+  color(2cm)=(black)
+}
+
+\begin{tikzfadingfrompicture}[name=glow fading]
+  \shade [shading=glow] (0,0) circle (1);
+\end{tikzfadingfrompicture}
+
+\begin{tikzfadingfrompicture}[name=beam fading]
+  \shade [shading=beam] (-1,-1) rectangle (1, 1);
+\end{tikzfadingfrompicture}
+
+% not mandatory, but I though it was better to set it blank
+\setbeamertemplate{headline}{}
+\def\beamer@entrycode{\vspace{-\headheight}}
+
+\tikzstyle{snakearrow} = [decorate, decoration={pre length=0.2cm,
+  post length=0.2cm, snake, amplitude=.4mm,
+  segment length=2mm},thick, ->]
+
+%% document-wide tikz options and styles
+
+\tikzset{%
+  % >=latex, % option for nice arrows
+  inner sep=0pt,%
+  outer sep=2pt,%
+  mark coordinate/.style={inner sep=0pt,outer sep=0pt,minimum size=3pt,
+    fill=black,circle}%
+}
+\tikzset{
+  % Define standard arrow tip
+  >=stealth',
+  % Define style for boxes
+  punkt/.style={
+    rectangle,
+    rounded corners,
+    draw=black, very thick,
+    text width=8em,
+    minimum height=2.5em,
+    text centered},
+}
+\makeatletter
+\newbox\@backgroundblock
+\newenvironment{backgroundblock}[2]{%
+  \global\setbox\@backgroundblock=\vbox\bgroup%
+  \unvbox\@backgroundblock%
+  \vbox to0pt\bgroup\vskip#2\hbox to0pt\bgroup\hskip#1\relax%
+}{\egroup\egroup\egroup}
+\addtobeamertemplate{background}{\box\@backgroundblock}{}
+\makeatother
+
+\title{Julia 底层优化}
+\author{俞颐超\\yyc1992@gmail.com}
+\institute[\footnotesize {@yuyichao}]{\footnotesize {@yuyichao}\\\includegraphics[width=1cm]{yuyichao.jpg}}
+\date{Aug 16, 2016}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{}
+  \tableofcontents
+\end{frame}
+
+\section{垃圾收集基础}
+\begin{frame}{垃圾收集}
+  \only<+>{
+    \begin{block}{垃圾收集的作用}
+      \begin{itemize}
+      \item 分配内存
+      \item 清理垃圾\\
+        一般情况下大部分分配的内存都是垃圾
+      \end{itemize}
+    \end{block}
+  }
+  \only<+>{
+    \begin{block}{Mark-Sweep}
+      \begin{itemize}
+      \item Mark\\
+        分辨哪些内存是有用的
+      \item Sweep\\
+        回收内存
+      \end{itemize}
+    \end{block}
+  }
+  \only<+>{
+    \begin{block}{减少延迟}
+      \begin{itemize}
+      \item 分代
+      \item 并行 (parallel)
+      \item 并行 (concurrent)
+      \end{itemize}
+    \end{block}
+  }
+\end{frame}
+
+\section{多线程}
+\begin{frame}{多线程}
+  \only<+>{
+    \begin{block}{线程同步开销}
+      \begin{itemize}
+      \item 锁
+      \item 内存屏障 (Memory barrier)
+      \item 线程局部变量
+      \end{itemize}
+    \end{block}
+  }
+  \only<+>{
+    \begin{block}{多线程垃圾收集支持}
+      \begin{itemize}
+      \item Stop the world
+      \item 安全点 (safepoint)
+      \item GC 状态
+      \end{itemize}
+    \end{block}
+  }
+\end{frame}
+
+\section{调试内存错误}
+\begin{frame}{调试内存错误}
+  \only<+>{
+    \begin{block}{常见内存错误原因}
+      \begin{itemize}
+      \item 越界访问
+      \item ccall GC 引用
+      \end{itemize}
+    \end{block}
+  }
+  \only<+>{
+    \begin{block}{调试方法}
+      \begin{itemize}
+      \item ASLR
+      \item rr
+      \end{itemize}
+    \end{block}
+  }
+\end{frame}
+
+\end{document}

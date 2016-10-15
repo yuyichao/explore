@@ -73,13 +73,7 @@ function process_objfile(fname)
 end
 
 function check_codegen_symbol(sym, sz, islocal)
-    if !islocal
-        sym in ("V_null", "__stack_chk_guard", "last_time", "builder",
-                "mbuilder", "NoopType", "imaging_mode", "PM") && return true
-        startswith(sym, "JL_I::") && return true
-        endswith(sym, "::atomic_hdl") && return true
-    end
-    return false
+    endswith(sym, "::atomic_hdl")
 end
 
 const known_safe = [# constants
@@ -96,10 +90,32 @@ const known_safe = [# constants
                     (("threadsafe", "region_pg_cnt", "current_pg_count"),),
                     (r"^jl_(top|core|base)_module$", sizeof(Int)),
                     (r"^(T|tbaa)_", sizeof(Int), r"\.cpp$"),
-                    (r"_(func|llvmt|var|dillvmt|func_sig)$", sizeof(Int), r"\.cpp$"),
+                    (r"_(func|llvmt|var|dillvmt)$", sizeof(Int), r"\.cpp$"),
                     (("int16", "int32"), true, sizeof(Int), "typemap.c"),
                     (r"_func$", sizeof(Int), "task.c"),
+                    # codegen
                     (r"^jltls_states_func_", "codegen.cpp"),
+                    (r"^JL_I::(intrinsic_nargs|runtime_fp)$", "codegen.cpp"),
+                    (r"_llvmt$", "codegen.cpp"),
+                    (r"^jl(_di|)_func_sig", "codegen.cpp"),
+                    (r"::ptls_getter$", "codegen.cpp"),
+                    (r"::llvmcallnumbering$", "codegen.cpp"),
+                    (("builder", "mbuilder", "mallocData", "coverageData",
+                      "queuerootfun", "runtime_func", "imaging_mode",
+                      "jl_LLVMContext", "NoopType", "builtin_func_map",
+                      "V_null", "jl_TargetMachine", "__stack_chk_guard",
+                      "jl_globalPM", "stringConstants", "libMapGV",
+                      "symMapDefault", "allPltMap", "nested_compile",
+                      "gv_for_global", "dump_compiles_stream", "globalUnique",
+                      "shadow_output", "last_time"), "codegen.cpp"),
+                    (r"^sysimg_", "debuginfo.cpp"),
+                    (("jl_jit_events", "jl_sysimage_base"), "debuginfo.cpp"),
+                    # A few files to trust (or handled specially) for now
+                    (r"", "gc.c"),
+                    (r"", "gc-debug.c"),
+                    (r"", "dump.c"),
+                    (r"", "signal-handling.c"),
+                    (r"", true, "jlapi.c"),
                     # lock
                     (r"_lock$", sizeof(Culong) * 2),
                     # ast context
@@ -112,6 +128,8 @@ const known_safe = [# constants
                     # llvm memory manager
                     (r".*", "cgmemmgr.cpp"),
                     (r".*", "safepoint.c"),
+                    # Trust our llvm passes
+                    (r"", r"llvm-.*\.cpp"),
                     # llvm internal
                     (r"^llvm::", r"\.cpp$")]
 

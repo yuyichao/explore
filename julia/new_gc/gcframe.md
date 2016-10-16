@@ -6,15 +6,15 @@ The GC frame generation is effectively an register allocation problem.
 However, there are a few constraints that make it different from a simple
 register allocation.
 
-1. jlcall frames
+1. `jlcall` frames
 
-    At the jlcall call sites, we need the roots to be in the right order for
-    the jlcall. This makes the allocation significantly harder to optimize.
-    Due to the conflicts and overlapping lifetime of multiple jlcall frames,
-    we may not be able to easily select the optimum jlcall frame offsets.
+    At the `jlcall` call sites, we need the roots to be in the right order for
+    the `jlcall`. This makes the allocation significantly harder to optimize.
+    Due to the conflicts and overlapping lifetime of multiple `jlcall` frames,
+    we may not be able to easily select the optimum `jlcall` frame offsets.
     However, we'd like to at least be as good as the allocation on 0.4, i.e.
-    directly emit temporaries into the jlcall frame and reused uninitialized
-    jlcall frame slots for temporaries.
+    directly emit temporaries into the `jlcall` frame and reused uninitialized
+    `jlcall` frame slots for temporaries.
 
 2. `returntwice` functions (a.k.a. `try`-`catch`)
 
@@ -28,7 +28,7 @@ register allocation.
 
     The roots that is kept live this way also need to always be in the same
     slot, which is not really an issue for simple register allocation but
-    might need to be handled specially due to jlcall frames.
+    might need to be handled specially due to `jlcall` frames.
 
 ## Optimizations
 
@@ -47,8 +47,8 @@ register allocation.
     intrinsic.
 
     Loading from immutable can be detected by `tbaa_immut`.
-    This should be done after jlcall frame layout in order to avoid using
-    an extra slot for the parent if the child is only used in a jlcall frame
+    This should be done after `jlcall` frame layout in order to avoid using
+    an extra slot for the parent if the child is only used in a `jlcall` frame
     anyway.
 
 2. Do not duplicate roots
@@ -87,8 +87,80 @@ register allocation.
     intrinsics in the code. This means that we can trivially delete a GC root
     if it is only used between two safepoints.
 
-5. Optimize write barrier using the same info
+5. Optimize write barrier using the same info (TODO)
 
     (Store of known old value or to known young value doesn't need a wb)
 
-6. Lower GC safepoint and state transition
+6. Lower GC safepoint and state transition (TODO)
+
+## Steps
+
+1. Collect a list of jlcall frames
+
+    Iterate the entry block before `ptlsStates`, looking for calls of
+    `julia.jlcall_frame_decl` intrinsic.
+
+2. Collect a list of root slots
+
+    Iterate the entry block before `ptlsStates`, looking for calls of
+    `julia.gcroot_decl` intrinsic.
+
+3. Collect a list of SSA roots
+
+    These are the SSA values that are stored to GC roots and jlcall frames.
+    Follow `phi` nodes with at least one SSA roots as input.
+
+4. Collect a list of known rooted values
+
+    These are the SSA values marked with `julia.gc_noroot(%jl_value_t*)`,
+    function arguments. Mark any load from these values with `jltbaa_immut`
+    too recursively.
+
+5. Remove known rooted values from SSA root list
+
+    Including the list collected above and constants.
+
+6. Collect a list of safepoints
+
+    Iterate all basic blocks and instructions. Collect a list of call
+    instructions except the ones that are marked as non-safepoint.
+
+7. Collect a list of stack slots related to SSA roots
+
+    These are single pointer `alloca`s which have at least one load or store
+    of SSA roots as well as all the load and stores of SSA roots on this slot.
+    (This needs to be done before removing jlcall roots)
+
+8. Collect `enter`-`leave` pairs
+
+    Create a map between `enter` and `leave`. Do constant propagation on
+    `enter` to figure out the normal branch and the error branch (if possible).
+    Allocate exception frames.
+
+9. Collect the live interval (set of safepoints) of SSA roots
+
+    Follow `gep` and `bitcast`. Do not follow `phi` nodes and do not merge
+    the live interval of `phi` nodes input and output.
+
+10. Collect the live interval (set of safepoints) of `jlcall` slots
+
+    Scan in the reverse order `jlcall` frames are declared.
+
+    For ones with only one store, if the store value is an unhandled SSA root,
+    assign the root to this slot and remove it from the SSA root list.
+    The lifetime of the slot is the lifetime of the SSA root plus the lifetime
+    of the slot (from store to `jlcall`).
+
+    If the single store is a known rooted value, move the store to right before
+    the use and the lifetime is only the `jlcall`.
+
+    (This is optional and can be hard) If the single store is assigned to a
+    different `jlcall` frame, remove the lifetime of the SSA value from the
+    lifetime of the slot and move the store to the new beginning of the lifetime.
+    Extend the "rooted lifetime" of the SSA value with the lifetime of
+    the slot so that other slots don't need to root it in this interval.
+    We need to be careful that the move of the store is valid.
+    It cannot be moved across the creation of the SSA value and
+    maybe not `returntwice` functions either.
+
+    Otherwise use the lifetime of the store.

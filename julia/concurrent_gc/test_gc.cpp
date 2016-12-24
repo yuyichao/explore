@@ -12,7 +12,7 @@
 #include <atomic>
 
 #define NSLOTS 1000
-#define NOBJS 1000000
+#define NOBJS 100000
 
 static int slots[NSLOTS];
 static char marked[NOBJS];
@@ -20,6 +20,7 @@ static size_t page_size = sysconf(_SC_PAGESIZE);
 static auto sp_page = (volatile int*)mmap(nullptr, page_size,
                                           PROT_WRITE | PROT_READ,
                                           MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+static std::vector<int> missed_objs;
 
 static void init(void)
 {
@@ -42,11 +43,7 @@ static void create_objs(Func &&func)
     }
 }
 
-struct Runner {
-    std::vector<int> missed_objs;
-};
-
-struct NaiveGC : Runner {
+struct NaiveGC {
     bool gc_running{false};
     const char *name(void)
     {
@@ -69,7 +66,7 @@ struct NaiveGC : Runner {
     }
 };
 
-struct SeqCstGC : Runner {
+struct SeqCstGC {
     std::atomic_bool gc_running{false};
     const char *name(void)
     {
@@ -96,7 +93,7 @@ struct SeqCstGC : Runner {
 
 static volatile bool safepoint_triggered = false;
 
-struct SafepointGC : Runner {
+struct SafepointGC {
     const char *name(void)
     {
         return "Safepoint";
@@ -129,7 +126,7 @@ static bool run_gc_once(T &&gc)
 {
     init();
     gc.reset();
-    gc.missed_objs.empty();
+    missed_objs.clear();
     std::thread creator_thread([&] {
             create_objs([&] (auto slot, auto obj) {
                     return gc.creator(slot, obj);
@@ -145,7 +142,7 @@ static bool run_gc_once(T &&gc)
         }
     }
     creator_thread.join();
-    for (auto obj: gc.missed_objs)
+    for (auto obj: missed_objs)
         marked[obj - 1] = 1;
     for (int i = 0;i < NSLOTS;i++) {
         int obj = slots[i];

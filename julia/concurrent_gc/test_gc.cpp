@@ -105,6 +105,7 @@ struct SeqCstGC : Runner {
     void start_gc(void) override
     {
         gc_running = true;
+        std::atomic_thread_fence(std::memory_order_seq_cst);
     }
     void reset(void) override
     {

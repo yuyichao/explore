@@ -44,58 +44,23 @@ static void create_objs(Func &&func)
 
 struct Runner {
     std::vector<int> missed_objs;
-    virtual const char *name(void) = 0;
-    virtual void start_gc(void) = 0;
-    virtual void reset(void) = 0;
-    virtual bool creator(volatile int*, int) = 0;
-    bool run(void)
-    {
-        init();
-        reset();
-        missed_objs.empty();
-        std::thread creator_thread([&] {
-                create_objs([&] (auto slot, auto obj) {
-                        return this->creator(slot, obj);
-                    });
-            });
-        while (__atomic_load_n(&slots[10], __ATOMIC_ACQUIRE) == 0) {
-        }
-        start_gc();
-        for (int i = 0;i < NSLOTS;i++) {
-            int obj = slots[i];
-            if (obj != 0) {
-                marked[obj - 1] = 1;
-            }
-        }
-        creator_thread.join();
-        for (auto obj: missed_objs)
-            marked[obj - 1] = 1;
-        for (int i = 0;i < NSLOTS;i++) {
-            int obj = slots[i];
-            if (obj != 0 && marked[obj - 1] == 0) {
-                printf("    Missed object: %d\n", obj);
-                return false;
-            }
-        }
-        return true;
-    }
 };
 
 struct NaiveGC : Runner {
     bool gc_running{false};
-    const char *name(void) override
+    const char *name(void)
     {
         return "Naive";
     }
-    void start_gc(void) override
+    inline void start_gc(void)
     {
         gc_running = true;
     }
-    void reset(void) override
+    void reset(void)
     {
         gc_running = false;
     }
-    bool creator(volatile int*, int obj) override
+    inline bool creator(volatile int*, int obj)
     {
         if (!gc_running)
             return false;
@@ -106,20 +71,20 @@ struct NaiveGC : Runner {
 
 struct SeqCstGC : Runner {
     std::atomic_bool gc_running{false};
-    const char *name(void) override
+    const char *name(void)
     {
         return "SeqCst";
     }
-    void start_gc(void) override
+    inline void start_gc(void)
     {
         gc_running = true;
         std::atomic_thread_fence(std::memory_order_seq_cst);
     }
-    void reset(void) override
+    void reset(void)
     {
         gc_running = false;
     }
-    bool creator(volatile int*, int obj) override
+    inline bool creator(volatile int*, int obj)
     {
         std::atomic_thread_fence(std::memory_order_seq_cst);
         if (!gc_running)
@@ -132,20 +97,20 @@ struct SeqCstGC : Runner {
 static volatile bool safepoint_triggered = false;
 
 struct SafepointGC : Runner {
-    const char *name(void) override
+    const char *name(void)
     {
         return "Safepoint";
     }
-    void start_gc(void) override
+    inline void start_gc(void)
     {
         mprotect((void*)sp_page, sysconf(_SC_PAGESIZE), PROT_NONE);
     }
-    void reset(void) override
+    void reset(void)
     {
         safepoint_triggered = false;
         mprotect((void*)sp_page, sysconf(_SC_PAGESIZE), PROT_READ | PROT_WRITE);
     }
-    bool creator(volatile int*, int obj) override
+    inline bool creator(volatile int*, int obj)
     {
         // std::atomic_signal_fence(std::memory_order_seq_cst);
         asm volatile ("" ::: "memory");
@@ -160,12 +125,45 @@ struct SafepointGC : Runner {
 };
 
 template<typename T>
+static bool run_gc_once(T &&gc)
+{
+    init();
+    gc.reset();
+    gc.missed_objs.empty();
+    std::thread creator_thread([&] {
+            create_objs([&] (auto slot, auto obj) {
+                    return gc.creator(slot, obj);
+                });
+        });
+    while (__atomic_load_n(&slots[10], __ATOMIC_ACQUIRE) == 0) {
+    }
+    gc.start_gc();
+    for (int i = 0;i < NSLOTS;i++) {
+        int obj = slots[i];
+        if (obj != 0) {
+            marked[obj - 1] = 1;
+        }
+    }
+    creator_thread.join();
+    for (auto obj: gc.missed_objs)
+        marked[obj - 1] = 1;
+    for (int i = 0;i < NSLOTS;i++) {
+        int obj = slots[i];
+        if (obj != 0 && marked[obj - 1] == 0) {
+            printf("    Missed object: %d\n", obj);
+            return false;
+        }
+    }
+    return true;
+}
+
+template<typename T>
 static void run_gc(T &&gc)
 {
     printf("Running %s\n", gc.name());
     bool pass = true;
     for (int i = 0;i < 100000;i++) {
-        if (!gc.run()) {
+        if (!run_gc_once(std::forward<T>(gc))) {
             printf("    Failed in run %d\n", i);
             pass = false;
             break;

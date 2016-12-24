@@ -5,6 +5,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include <signal.h>
+#include <ucontext.h>
 
 #include <random>
 #include <thread>
@@ -109,7 +110,13 @@ struct SafepointGC {
     }
     inline bool creator(volatile int*, int obj)
     {
-        // std::atomic_signal_fence(std::memory_order_seq_cst);
+#ifdef __aarch64__
+        asm volatile ("ldr %0, [%1]\n"
+                      : "+r" (obj)
+                      : "r" (sp_page)
+                      : "memory");
+        return obj;
+#else
         asm volatile ("" ::: "memory");
         int dummy = *sp_page;
         (void)dummy;
@@ -118,6 +125,7 @@ struct SafepointGC {
             return true;
         }
         return false;
+#endif
     }
 };
 
@@ -171,10 +179,21 @@ static void run_gc(T &&gc)
     }
 }
 
-static void segv_handler(int, siginfo_t*, void*)
+static void segv_handler(int, siginfo_t*, void *_ctx)
 {
+#ifdef __aarch64__
+    ucontext_t *ctx = (ucontext_t*)_ctx;
+    uint32_t *pc = (uint32_t*)ctx->uc_mcontext.pc;
+    ctx->uc_mcontext.pc = uintptr_t(ctx->uc_mcontext.pc) + 4;
+    uint32_t ldr = *pc;
+    int reg = ldr & 0x1f;
+    int obj = (int)ctx->uc_mcontext.regs[reg];
+    missed_objs.push_back(obj);
+    ctx->uc_mcontext.regs[reg] = 1;
+#else
     safepoint_triggered = true;
     mprotect((void*)sp_page, page_size, PROT_READ | PROT_WRITE);
+#endif
 }
 
 int main()

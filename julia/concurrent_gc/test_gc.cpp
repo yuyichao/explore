@@ -2,6 +2,10 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <sys/mman.h>
+#include <unistd.h>
+#include <signal.h>
+
 #include <random>
 #include <thread>
 #include <vector>
@@ -12,6 +16,10 @@
 
 static int slots[NSLOTS];
 static char marked[NOBJS];
+static size_t page_size = sysconf(_SC_PAGESIZE);
+static auto sp_page = (volatile int*)mmap(nullptr, page_size,
+                                          PROT_WRITE | PROT_READ,
+                                          MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
 static void init(void)
 {
@@ -121,6 +129,36 @@ struct SeqCstGC : Runner {
     }
 };
 
+static volatile bool safepoint_triggered = false;
+
+struct SafepointGC : Runner {
+    const char *name(void) override
+    {
+        return "Safepoint";
+    }
+    void start_gc(void) override
+    {
+        mprotect((void*)sp_page, sysconf(_SC_PAGESIZE), PROT_NONE);
+    }
+    void reset(void) override
+    {
+        safepoint_triggered = false;
+        mprotect((void*)sp_page, sysconf(_SC_PAGESIZE), PROT_READ | PROT_WRITE);
+    }
+    bool creator(volatile int*, int obj) override
+    {
+        // std::atomic_signal_fence(std::memory_order_seq_cst);
+        asm volatile ("" ::: "memory");
+        int dummy = *sp_page;
+        (void)dummy;
+        if (safepoint_triggered) {
+            missed_objs.push_back(obj);
+            return true;
+        }
+        return false;
+    }
+};
+
 template<typename T>
 static void run_gc(T &&gc)
 {
@@ -138,9 +176,22 @@ static void run_gc(T &&gc)
     }
 }
 
+static void segv_handler(int, siginfo_t*, void*)
+{
+    safepoint_triggered = true;
+    mprotect((void*)sp_page, page_size, PROT_READ | PROT_WRITE);
+}
+
 int main()
 {
-    run_gc(NaiveGC());
-    run_gc(SeqCstGC());
+    struct sigaction act;
+    memset(&act, 0, sizeof(struct sigaction));
+    sigemptyset(&act.sa_mask);
+    act.sa_sigaction = segv_handler;
+    act.sa_flags = SA_SIGINFO;
+    sigaction(SIGSEGV, &act, NULL);
+    // run_gc(NaiveGC());
+    // run_gc(SeqCstGC());
+    run_gc(SafepointGC());
     return 0;
 }

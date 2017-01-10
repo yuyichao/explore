@@ -1,6 +1,6 @@
-#!/usr/bin/julia -f
+#!/usr/bin/julia
 
-f(a::FloatingPoint, b::FloatingPoint) = a - b * i
+f(a::AbstractFloat, b::AbstractFloat) = a - b * i
 f(a, b) = a - b
-g(a, b) = invoke(f, (Number, Number), a, b)
-@time @code_typed g(1.2, 2.3)
+g(a, b) = invoke(f, Tuple{Number,Number}, a, b)
+@code_warntype g(1.2, 2.3)

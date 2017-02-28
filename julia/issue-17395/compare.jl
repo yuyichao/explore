@@ -1,72 +1,39 @@
 #!/usr/bin/julia
 
-println("Number of threads = $(Threads.nthreads())")
-
 const sin_ptr = Ref{Ptr{Void}}()
 const cos_ptr = Ref{Ptr{Void}}()
 
-@inline call_ptr(ptr, x::Float64) = ccall(ptr, Float64, (Float64,), x)
+@inline call_ptr2(ptr1, ptr2, x::Float64) =
+    ccall((:call_ptr, "./libcompare"), Float64, (Ptr{Void}, Ptr{Void}, Cdouble), ptr1, ptr2, x)
 
-@noinline function test1!(y, x)
-    # @assert length(y) == length(x)
+@noinline function test1!(n)
     sp = sin_ptr[]
     cp = sin_ptr[]
-    for i = 1:length(x)
-        y[i] = call_ptr(sp, x[i])^2 + call_ptr(cp, x[i])^2
+    for i = 1:n
+        call_ptr2(sp, cp, 0.5)
     end
-    y
-end
-
-@noinline function testn!(y::Vector{Float64}, x::Vector{Float64})
-    # @assert length(y) == length(x)
-    sp = sin_ptr[]
-    cp = sin_ptr[]
-    Threads.@threads for i = 1:length(x)
-        y[i] = call_ptr(sp, x[i])^2 + call_ptr(cp, x[i])^2
-    end
-    y
 end
 
 @noinline function yield2()
     current_task().state == :runnable || error()
 end
 
+const do_yield = Ref{Bool}()
+
 function run_tests()
-    n = 10^7
-    x = rand(n)
-    y = zeros(n)
-    # @code_llvm test1!(y, x)
-    # test1!(y, x)
-    Threads.@threads for i in 1:100
-        sin(1)
-        cos(1)
+    n = 2 * 10^7
+    # test1!(n)
+    if do_yield[]
+        sin(0.5)
+        cos(0.5)
         yield2()
     end
-    @time for i in 1:10
-        test1!(y, x)
-    end
-    testn!(y, x)
-    @time for i in 1:10
-        testn!(y, x)
+    for i in 1:10
+        test1!(n)
     end
 end
 
-# println("libm")
-# sin_ptr[] = cglobal((:sin, "libm"))
-# cos_ptr[] = cglobal((:cos, "libm"))
-# run_tests()
-
-println("libopenlibm")
-sin_ptr[] = cglobal((:sin, "libopenlibm"))
-cos_ptr[] = cglobal((:cos, "libopenlibm"))
-run_tests()
-
-println("libm")
-sin_ptr[] = cglobal((:sin, "libm"))
-cos_ptr[] = cglobal((:cos, "libm"))
-run_tests()
-
-println("libopenlibm")
+do_yield[] = parse(Bool, ARGS[1])
 sin_ptr[] = cglobal((:sin, "libopenlibm"))
 cos_ptr[] = cglobal((:cos, "libopenlibm"))
 run_tests()

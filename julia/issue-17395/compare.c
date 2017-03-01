@@ -1,8 +1,28 @@
 //
 
-double call_ptr(double (*s)(double), double (*c)(double), double x)
+static const double
+S1  = -1.66666666666666324348e-01, /* 0xBFC55555, 0x55555549 */
+S2  =  8.33333333332248946124e-03, /* 0x3F811111, 0x1110F8A6 */
+S3  = -1.98412698298579493134e-04, /* 0xBF2A01A0, 0x19C161D5 */
+S4  =  2.75573137070700676789e-06, /* 0x3EC71DE3, 0x57B1FE7D */
+S5  = -2.50507602534068634195e-08, /* 0xBE5AE5E6, 0x8A2B9CEB */
+S6  =  1.58969099521155010221e-10; /* 0x3DE5D93A, 0x5ACFD57C */
+
+double fs(double x)
 {
-    double sv = s(x);
-    double cv = c(x);
-    return sv * sv + cv * cv;
+    double z = x * x;
+    double w = z * z;
+    double r = S2 + z * (S3 + z * S4) + z * w * (S5 + z * S6);
+    double v = z * x;
+    return x + v * (S1 + z * r);
+}
+
+static double (*volatile ps)(double x) = fs;
+
+double call_ptr_n(double x, unsigned long n)
+{
+    double res = 0;
+    for (unsigned long i = 0; i < n; i++)
+        res += fs(x);
+    return res;
 }

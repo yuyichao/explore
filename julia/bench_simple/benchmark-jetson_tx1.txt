@@ -12,9 +12,9 @@ prod1(ary32_small)
      Time per evaluation: 229.71 ns [222.36 ns, 237.06 ns]
 prod1(ary64_small)
      Time per evaluation: 425.21 ns [411.76 ns, 438.65 ns]
-scale1(ary32_small2,ary32_small,2.0f0)
+scale1(ary32_small2, ary32_small, 2.0f0)
      Time per evaluation: 388.13 ns [375.32 ns, 400.93 ns]
-scale1(ary64_small2,ary64_small,2.0)
+scale1(ary64_small2, ary64_small, 2.0)
      Time per evaluation: 757.31 ns [728.85 ns, 785.78 ns]
 sum1(ary32_big)
      Time per evaluation: 6.98 ms [6.95 ms, 7.02 ms]
@@ -24,7 +24,7 @@ prod1(ary32_big)
      Time per evaluation: 6.98 ms [6.91 ms, 7.04 ms]
 prod1(ary64_big)
      Time per evaluation: 13.88 ms [13.84 ms, 13.92 ms]
-scale1(ary32_big2,ary32_big,2.0f0)
+scale1(ary32_big2, ary32_big, 2.0f0)
      Time per evaluation: 8.66 ms [8.63 ms, 8.69 ms]
-scale1(ary64_big2,ary64_big,2.0)
+scale1(ary64_big2, ary64_big, 2.0)
      Time per evaluation: 17.25 ms [17.21 ms, 17.29 ms]

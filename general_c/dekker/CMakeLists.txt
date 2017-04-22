@@ -1,0 +1,14 @@
+project(general_c.dekker C)
+
+set(CMAKE_C_FLAGS "-std=gnu11 -pthread -O3 ${CMAKE_C_FLAGS}")
+set(CMAKE_CXX_FLAGS "-std=gnu++11 -pthread -O3 ${CMAKE_CXX_FLAGS}")
+
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+
+set(SOURCES
+  dekker.cpp)
+
+add_executable(c_dekker ${SOURCES})
+target_link_libraries(c_dekker rt pthread)
+add_run(test_c_dekker
+  COMMAND ${CMAKE_CURRENT_BINARY_DIR}/c_dekker)

@@ -25,14 +25,15 @@ function benchmark_crc(n)
     println("  nrun = $nrun")
     sum_res = 0.0
     sum_res2 = 0.0
-    for i in 1:200
+    navg = 200
+    for i in 1:navg
         t = crc32_run(a, nrun)
         sum_res += t
         sum_res2 += t^2
     end
-    avg_res = sum_res / 100
-    avg_res2 = sum_res2 / 100
-    unc_res = sqrt(avg_res2 - avg_res^2) / sqrt(99)
+    avg_res = sum_res / navg
+    avg_res2 = sum_res2 / navg
+    unc_res = sqrt(avg_res2 - avg_res^2) / sqrt(navg - 1)
     return n, avg_res / nrun, unc_res / nrun
 end
 

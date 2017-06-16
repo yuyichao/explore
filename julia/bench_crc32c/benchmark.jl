@@ -16,6 +16,10 @@ function benchmark_crc(n)
         if t_est > 0.01
             break
         end
+        if nrun >= typemax(Int) ÷ 2
+            nrun = typemax(Int)
+            break
+        end
         nrun *= 2
     end
     println("  nrun = $nrun")
@@ -32,7 +36,7 @@ function benchmark_crc(n)
     return n, avg_res / nrun, unc_res / nrun
 end
 
-all_res = [benchmark_crc(2^i) for i in 1:20]
+all_res = [benchmark_crc(2^i) for i in 0:20]
 
 open(ARGS[1], "w") do fh
     for (n, avg, unc) in all_res

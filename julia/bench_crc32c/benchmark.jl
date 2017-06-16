@@ -1,55 +1,41 @@
 #!/usr/bin/julia -f
 
-using Benchmarks
-
-function convert_benchmark_result(r)
-    @show r
-    stats = Benchmarks.SummaryStatistics(r)
-    stats.elapsed_time_center, get(stats.elapsed_time_lower), get(stats.elapsed_time_upper)
-end
-
-macro benchmark_crc(ex)
-    quote
-        convert_benchmark_result(@benchmark crc32c($(esc(ex))))
+@noinline function crc32_run(a, nrun)
+    @elapsed for i in 1:nrun
+        crc32c(a)
     end
 end
 
-macro benchmark_crc_n(dict, n)
-    quote
-        n = $(esc(n))
-        @show n
-        dict[n] = @benchmark_crc ones(UInt8, n)
+function benchmark_crc(n)
+    println("Testing: $n")
+    a = ones(UInt8, n)
+    crc32c(a)
+    nrun = 100
+    while true
+        t_est = crc32_run(a, nrun)
+        if t_est > 0.01
+            break
+        end
+        nrun *= 2
     end
+    println("  nrun = $nrun")
+    sum_res = 0.0
+    sum_res2 = 0.0
+    for i in 1:200
+        t = crc32_run(a, nrun)
+        sum_res += t
+        sum_res2 += t^2
+    end
+    avg_res = sum_res / 100
+    avg_res2 = sum_res2 / 100
+    unc_res = sqrt(avg_res2 - avg_res^2) / sqrt(99)
+    return n, avg_res / nrun, unc_res / nrun
 end
 
-dict = Dict{Int,Any}()
-
-@benchmark_crc_n dict 1
-@benchmark_crc_n dict 2
-@benchmark_crc_n dict 4
-@benchmark_crc_n dict 8
-@benchmark_crc_n dict 16
-@benchmark_crc_n dict 32
-@benchmark_crc_n dict 64
-@benchmark_crc_n dict 128
-@benchmark_crc_n dict 256
-@benchmark_crc_n dict 512
-@benchmark_crc_n dict 1024
-@benchmark_crc_n dict 1 * 1024
-@benchmark_crc_n dict 2 * 1024
-@benchmark_crc_n dict 4 * 1024
-@benchmark_crc_n dict 8 * 1024
-@benchmark_crc_n dict 16 * 1024
-@benchmark_crc_n dict 32 * 1024
-@benchmark_crc_n dict 64 * 1024
-@benchmark_crc_n dict 128 * 1024
-@benchmark_crc_n dict 256 * 1024
-@benchmark_crc_n dict 512 * 1024
-@benchmark_crc_n dict 1024 * 1024
+all_res = [benchmark_crc(2^n) for i in 1:20]
 
 open(ARGS[1], "w") do fh
-    for k in sort(collect(keys(dict)))
-        v1, v2, v3 = dict[k]
-        println(fh, "$k,$v1,$v2,$v3")
+    for (n, avg, unc) in all_res
+        println(fh, "$n,$avg,$unc")
     end
 end

@@ -32,7 +32,7 @@ function benchmark_crc(n)
     return n, avg_res / nrun, unc_res / nrun
 end
 
-all_res = [benchmark_crc(2^n) for i in 1:20]
+all_res = [benchmark_crc(2^i) for i in 1:20]
 
 open(ARGS[1], "w") do fh
     for (n, avg, unc) in all_res

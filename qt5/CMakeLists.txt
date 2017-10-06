@@ -4,7 +4,7 @@ set(qt5_found 1)
 macro(find_qt5_package pkg)
   find_package(${pkg})
   if(NOT ${pkg}_FOUND)
-    set(qt5_found 1)
+    set(qt5_found 0)
   endif()
 endmacro()
 

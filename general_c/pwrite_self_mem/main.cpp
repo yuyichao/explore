@@ -13,15 +13,26 @@
 static void *try_allocate_high_page(void)
 {
     uintptr_t addr_lb = uintptr_t(1) << (sizeof(void*) * 8 - 1);
-    uintptr_t addr_ub = addr_lb + 1024 * 1024 * 1024;
     size_t pgsz = sysconf(_SC_PAGESIZE);
-    for (uintptr_t addr = addr_lb; addr <= addr_ub; addr += pgsz) {
+#if __SIZEOF_POINTER__ == 8
+    uintptr_t addr_init = ~uintptr_t(&addr_lb) / pgsz * pgsz;
+#else
+    uintptr_t addr_init = addr_lb;
+#endif
+    uintptr_t addr_ub = addr_init + 1024 * 1024 * 1024;
+    if (addr_ub < addr_lb)
+        addr_ub = ~uintptr_t(0);
+    for (uintptr_t addr = addr_init; addr <= addr_ub && addr >= addr_lb; addr += pgsz) {
         void *res = mmap((void*)addr, pgsz, PROT_READ | PROT_EXEC,
                          MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-        if (res != MAP_FAILED) {
-            fprintf(stderr, "Allocated high page at %p\n", res);
-            return res;
+        if (res == MAP_FAILED)
+            continue;
+        if (uintptr_t(res) < addr_lb) {
+            munmap(res, pgsz);
+            continue;
         }
+        fprintf(stderr, "Allocated high page at %p\n", res);
+        return res;
     }
     return nullptr;
 }

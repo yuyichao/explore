@@ -731,7 +731,7 @@ end
 
 end
 
-using Benchmarks
+using .Benchmarks
 
 function show_benchmark_result(r)
     stats = Benchmarks.SummaryStatistics(r)

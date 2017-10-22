@@ -4,6 +4,13 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#if defined(__x86_64__) || defined(__i386__)
+#define pause() asm volatile ("pause" ::: "memory")
+#else
+// TODO ARM/AArch64
+#define pause() do {} while (0)
+#endif
+
 int thread1_lock __attribute__((aligned(128))) = 0;
 int thread2_lock __attribute__((aligned(128))) = 0;
 
@@ -18,9 +25,8 @@ void thread_fun_naive(volatile int *self_lock, volatile int *other_lock, int num
         return false;
     };
     for (int i = 0;i < num;i++) {
-        while (!try_lock()) {
-            asm volatile ("pause" ::: "memory");
-        }
+        while (!try_lock())
+            pause();
         *gp += 1;
         *self_lock = 0;
     }
@@ -36,9 +42,8 @@ void thread_fun_seq_cst(int *self_lock, int *other_lock, int num, int *gp)
         return false;
     };
     for (int i = 0;i < num;i++) {
-        while (!try_lock()) {
-            asm volatile ("pause" ::: "memory");
-        }
+        while (!try_lock())
+            pause();
         *gp += 1;
         __atomic_store_n(self_lock, 0, __ATOMIC_RELEASE);
     }
@@ -71,9 +76,8 @@ void thread_fun_acq_rel(volatile int *self_lock, volatile int *other_lock, int n
         return false;
     };
     for (int i = 0;i < num;i++) {
-        while (!try_lock()) {
-            asm volatile ("pause" ::: "memory");
-        }
+        while (!try_lock())
+            pause();
         *gp += 1;
         __atomic_store_n(self_lock, 0, __ATOMIC_RELEASE);
     }

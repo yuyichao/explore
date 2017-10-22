@@ -1,5 +1,9 @@
 project(kde.kauth_py)
-find_package(KDE4 REQUIRED)
+find_package(KDE4)
+if(NOT KDE4_FOUND)
+  message("kde.kauth_py disabled")
+  return()
+endif()
 include(KDE4Defaults)
 include_directories(${KDE4_INCLUDES})
 

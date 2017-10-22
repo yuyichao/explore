@@ -1,3 +1,7 @@
 project(qt C CXX)
-find_package(Qt4 REQUIRED COMPONENTS QtCore QtGui QtWebkit QtSql QtNetwork)
+find_package(Qt4 COMPONENTS QtCore QtGui QtWebkit QtSql QtNetwork)
+if(NOT Qt4_FOUND)
+  message("qt disabled")
+  return()
+endif()
 add_subdirectory(webplugin)

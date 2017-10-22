@@ -30,12 +30,16 @@ module IR
 
 import Base: getindex, setindex!, start, next, done, show
 
+struct Metadata
+end
+
 mutable struct InstArgBase{Inst}
     val::Any # `Inst` or other special values
     # `prev` and `next` are always `nothing` unless `val` is `Inst`
     prev::Union{InstArgBase{Inst},Void}
     next::Union{InstArgBase{Inst},Void}
     parent::Inst
+    metadata::Union{Metadata,Void}
     idx::Int # Position in the args array
 end
 
@@ -85,6 +89,10 @@ mutable struct InsertPt
     before::Union{Inst,BasicBlock}
 end
 
+struct StaticParam
+    id::Int
+end
+
 get_bblist(::Void) = nothing
 get_bblist(bb::BasicBlock) = bb.parent
 get_bblist(inst::Inst) = get_bblist(inst.bb)
@@ -95,7 +103,7 @@ function new_arg(@nospecialize(val), parent::Inst, idx::Int)
     if isa(val, InstArg)
         val = val.val
     end
-    arg = InstArg(val, nothing, nothing, parent, idx)
+    arg = InstArg(val, nothing, nothing, parent, nothing, idx)
     if isa(val, Inst)
         old_uses = val.uses
         if old_uses !== nothing
@@ -338,6 +346,10 @@ function print_inst(io::IO, inst::Inst, nums::ObjectIdDict=number_vals(get_bblis
         end
         print(io, ')')
     end
+    meta = inst.metadata
+    if meta !== nothing
+        print(io, ' ', meta)
+    end
 end
 
 function print_bb(io::IO, bb::BasicBlock, nums::ObjectIdDict=number_vals(get_bblist(bb)))
@@ -361,9 +373,33 @@ end
 
 function ast2ir(ci::CodeInfo)
     code = ci.code
-    bbs = BBList()
-    cur_bb = bbs.first
+    bblist = BBList()
+    ins = InsertPt(bblist.first)
+    ssamap = ObjectIdDict()
     for expr in code
+# :call => 1:typemax(Int),
+# :invoke => 2:typemax(Int),
+# :static_parameter => 1:1,
+# :gotoifnot => 2:2,
+# :(&) => 1:1,
+# :(=) => 2:2,
+# :method => 1:4,
+# :const => 1:1,
+# :new => 1:typemax(Int),
+# :return => 1:1,
+# :the_exception => 0:0,
+# :enter => 1:1,
+# :leave => 1:1,
+# :inbounds => 1:1,
+# :boundscheck => 0:0,
+# :copyast => 1:1,
+# :meta => 0:typemax(Int),
+# :global => 1:1,
+# :foreigncall => 3:typemax(Int),
+# :isdefined => 1:1,
+# :simdloop => 0:0,
+# :gc_preserve_begin => 0:typemax(Int),
+# :gc_preserve_end => 0:typemax(Int)
     end
     return bbs
 end
@@ -373,34 +409,7 @@ show(io::IO, inst::Inst) = print_inst(io, inst)
 show(io::IO, bb::BasicBlock) = print_bb(io, bb)
 show(io::IO, bblist::BBList) = print_bblist(io, bblist)
 
-# function show(io::IO, bbs::BBList)
-#     bb_counter = 0
-#     bb_ids = ObjectIdDict()
-#     cur_bb = bbs.first
-#     while true
-#         bb_ids[cur_bb] = bb_counter
-#         bb_counter += 1
-#         cur_bb = cur_bb.next
-#         isa(cur_bb, Void) && break
-#     end
-#     cur_bb = bbs.first
-#     first_bb = true
-#     while true
-#         if first_bb
-#             first_bb = false
-#         else
-#             println(io)
-#         end
-#         bb_id = bb_ids[cur_bb]
-#         println(io, "$bb_id:")
-#         cur_bb = cur_bb.next
-#         isa(cur_bb, Void) && break
-#     end
-#     return
-# end
-
 end
-
 
 mutable struct MyMutable
     a::Int
@@ -414,8 +423,10 @@ function sumit2(arr)
     return val
 end
 
-ci = code_typed(sumit2, Tuple{Vector{MyMutable}})[1].first
-println(IR.ast2ir(ci))
+# ci = code_typed(sumit2, Tuple{Vector{MyMutable}})[1].first
+ci = code_typed(+, Tuple{Int8,Float32})[1].first
+@show ci
+print(IR.ast2ir(ci))
 
 bblist = IR.BBList()
 bb = bblist.first
@@ -424,4 +435,4 @@ a = IR.Inst(:call, (:identity, 2), Int, ins)
 b = IR.Inst(:call, (:identity, a), Int, ins)
 c = IR.Inst(:call, (:+, a, b), Int, ins)
 d = IR.Inst(:return, (c,), Void, ins)
-bblist
+print(bblist)

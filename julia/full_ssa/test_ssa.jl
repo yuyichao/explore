@@ -39,7 +39,6 @@ mutable struct InstArgBase{Inst}
     prev::Union{InstArgBase{Inst},Void}
     next::Union{InstArgBase{Inst},Void}
     parent::Inst
-    metadata::Union{Metadata,Void}
     idx::Int # Position in the args array
 end
 
@@ -51,6 +50,7 @@ mutable struct InstBase{BB}
     next::Union{InstBase{BB},Void}
     uses::Union{InstArgBase{InstBase{BB}},Void}
     bb::Union{BB,Void}
+    metadata::Union{Metadata,Void}
 end
 
 mutable struct BasicBlockBase{BBList}
@@ -103,7 +103,7 @@ function new_arg(@nospecialize(val), parent::Inst, idx::Int)
     if isa(val, InstArg)
         val = val.val
     end
-    arg = InstArg(val, nothing, nothing, parent, nothing, idx)
+    arg = InstArg(val, nothing, nothing, parent, idx)
     if isa(val, Inst)
         old_uses = val.uses
         if old_uses !== nothing
@@ -239,7 +239,7 @@ insert_before!(inst::Inst, before::Inst) = insert_before!(inst, InsertPt(before)
 function Inst(head::Symbol, args, @nospecialize(typ), ins_before=nothing)
     nargs = length(args)
     argv = Vector{InstArg}(nargs)
-    inst = Inst(head, argv, typ, nothing, nothing, nothing, nothing)
+    inst = Inst(head, argv, typ, nothing, nothing, nothing, nothing, nothing)
     for i in 1:nargs
         argv[i] = new_arg(args[i], inst, i)
     end
@@ -247,6 +247,12 @@ function Inst(head::Symbol, args, @nospecialize(typ), ins_before=nothing)
         insert_before!(inst, ins_before)
     end
     return inst
+end
+
+mutable struct Builder
+    bblist::BBList
+    ins::InsertPt
+    cur_meta::Metadata
 end
 
 start(bb::BasicBlock) = bb.first
@@ -401,7 +407,7 @@ function ast2ir(ci::CodeInfo)
 # :gc_preserve_begin => 0:typemax(Int),
 # :gc_preserve_end => 0:typemax(Int)
     end
-    return bbs
+    return bblist
 end
 
 show(io::IO, arg::InstArg) = print_instarg(io, arg)

@@ -28,7 +28,7 @@
 
 module IR
 
-import Base: getindex, setindex!
+import Base: getindex, setindex!, start, next, done, show
 
 mutable struct InstArgBase{Inst}
     val::Any # `Inst` or other special values
@@ -49,19 +49,35 @@ mutable struct InstBase{BB}
     bb::Union{BB,Void}
 end
 
-mutable struct BasicBlock
-    first::Union{InstBase{BasicBlock},Void}
-    last::Union{InstBase{BasicBlock},Void}
-    preds::Vector{BasicBlock}
+mutable struct BasicBlockBase{BBList}
+    first::Union{InstBase{BasicBlockBase{BBList}},Void}
+    last::Union{InstBase{BasicBlockBase{BBList}},Void}
+    preds::Vector{BasicBlockBase{BBList}}
 
-    prev::Union{BasicBlock,Void}
-    next::Union{BasicBlock,Void}
+    prev::Union{BasicBlockBase{BBList},Void}
+    next::Union{BasicBlockBase{BBList},Void}
 
-    br_true::BasicBlock
-    br_false::BasicBlock
-    BasicBlock(preds=BasicBlock[]) = new(nothing, nothing, preds, nothing, nothing)
+    parent::BBList
+
+    br_true::BasicBlockBase{BBList}
+    br_false::BasicBlockBase{BBList}
+    BasicBlockBase{BBList}(parent::BBList, preds=BasicBlockBase{BBList}[]) where BBList =
+        new(nothing, nothing, preds,
+            nothing, nothing, parent)
 end
 
+mutable struct BBList
+    first::BasicBlockBase{BBList}
+    last::BasicBlockBase{BBList}
+    @inline function BBList()
+        self = new()
+        bb = BasicBlockBase{BBList}(self)
+        self.first = self.last = bb
+        return self
+    end
+end
+
+const BasicBlock = BasicBlockBase{BBList}
 const Inst = InstBase{BasicBlock}
 const InstArg = InstArgBase{Inst}
 
@@ -69,16 +85,24 @@ mutable struct InsertPt
     before::Union{Inst,BasicBlock}
 end
 
+get_bblist(::Void) = nothing
+get_bblist(bb::BasicBlock) = bb.parent
+get_bblist(inst::Inst) = get_bblist(inst.bb)
+get_bblist(arg::InstArg) = get_bblist(arg.parent)
+
 # Create a new argument for an instruction
 function new_arg(@nospecialize(val), parent::Inst, idx::Int)
+    if isa(val, InstArg)
+        val = val.val
+    end
     arg = InstArg(val, nothing, nothing, parent, idx)
     if isa(val, Inst)
-        old_uses = parent.uses
+        old_uses = val.uses
         if old_uses !== nothing
             arg.next = old_uses
             old_uses.prev = arg
         end
-        parent.uses = arg
+        val.uses = arg
     end
     return arg
 end
@@ -106,9 +130,6 @@ function setindex!(inst::Inst, @nospecialize(val), idx::Int)
     nargs = length(inst.args)
     if idx > nargs + 1
         throw(BoundsError(inst, idx))
-    end
-    if isa(val, InstArg)
-        val = val.val
     end
     arg = new_arg(val, inst, idx)
     if idx == nargs + 1
@@ -207,16 +228,135 @@ end
 
 insert_before!(inst::Inst, before::Inst) = insert_before!(inst, InsertPt(before))
 
-mutable struct BBList
-    first::BasicBlock
-    last::BasicBlock
-    @inline function BBList()
-        bb = BasicBlock()
-        return new(bb, bb)
+function Inst(head::Symbol, args, @nospecialize(typ), ins_before=nothing)
+    nargs = length(args)
+    argv = Vector{InstArg}(nargs)
+    inst = Inst(head, argv, typ, nothing, nothing, nothing, nothing)
+    for i in 1:nargs
+        argv[i] = new_arg(args[i], inst, i)
+    end
+    if ins_before !== nothing
+        insert_before!(inst, ins_before)
+    end
+    return inst
+end
+
+start(bb::BasicBlock) = bb.first
+done(::BasicBlock, @nospecialize(inst)) = inst === nothing
+next(::BasicBlock, inst) = (inst, inst.next)
+
+start(bblist::BBList) = bblist.first
+done(::BBList, @nospecialize(bb)) = bb === nothing
+next(::BBList, bb) = (bb, bb.next)
+
+function number_vals(bblist::BBList)
+    nums = ObjectIdDict()
+    cur_id = 0
+    bb_id = 0
+    for bb in bblist
+        nums[bb] = bb_id
+        bb_id += 1
+        for inst in bb
+            inst.uses === nothing && continue
+            nums[inst] = cur_id
+            cur_id += 1
+        end
+    end
+    return nums
+end
+number_vals(::Void) = ObjectIdDict()
+
+function print_instarg(io::IO, arg::InstArg, nums::ObjectIdDict=number_vals(get_bblist(arg)))
+    val = arg.val
+    if isa(val, Inst)
+        id = get(nums, val, -1)::Int
+        print(io, "%", id)
+        if val.typ !== Any
+            print(io, "::", val.typ)
+        end
+    else
+        Base.show_unquoted(io, val, 0, 0)
+        # show(io, val)
+    end
+    return
+end
+
+function print_inst(io::IO, inst::Inst, nums::ObjectIdDict=number_vals(get_bblist(inst)))
+    id = get(nums, inst, -1)::Int
+    if id != -1
+        print(io, "%", id)
+        if inst.typ !== Any
+            print(io, "::", inst.typ)
+        end
+        print(io, " = ")
+    end
+    head = inst.head
+    args = inst.args
+    # head = inst.head
+    # elseif head === :invoke
+    # elseif head === :static_parameter
+    # end
+    # :gotoifnot => 2:2,
+    # :(&) => 1:1,
+    # :(=) => 2:2,
+    # :method => 1:4,
+    # :const => 1:1,
+    # :new => 1:typemax(Int),
+    # :return => 1:1,
+    # :the_exception => 0:0,
+    # :enter => 1:1,
+    # :leave => 1:1,
+    # :inbounds => 1:1,
+    # :boundscheck => 0:0,
+    # :copyast => 1:1,
+    # :meta => 0:typemax(Int),
+    # :global => 1:1,
+    # :foreigncall => 3:typemax(Int),
+    # :isdefined => 1:1,
+    # :simdloop => 0:0,
+    # :gc_preserve_begin => 0:typemax(Int),
+    # :gc_preserve_end => 0:typemax(Int)
+    if head === :call
+        callee = args[1]
+        print_instarg(io, callee, nums)
+        print(io, '(')
+        for i in 2:length(args)
+            if i != 2
+                print(io, ", ")
+            end
+            print_instarg(io, args[i], nums)
+        end
+        print(io, ')')
+    elseif head === :return && length(args) == 1
+        print(io, "return ")
+        print_instarg(io, args[1], nums)
+    else
+        print(io, "Inst(:", head)
+        for i in 1:length(args)
+            print(io, ", ")
+            print_instarg(io, args[i], nums)
+        end
+        print(io, ')')
     end
 end
 
-function createSlotLoad(cur::BasicBlock)
+function print_bb(io::IO, bb::BasicBlock, nums::ObjectIdDict=number_vals(get_bblist(bb)))
+    bb_id = nums[bb]::Int
+    println(io, bb_id, ':')
+    for inst in bb
+        print(io, "  ")
+        print_inst(io, inst, nums)
+        println(io)
+    end
+    return
+end
+
+function print_bblist(io::IO, bblist::BBList, nums::ObjectIdDict=number_vals(bblist))
+    for bb in bblist
+        print_bb(io, bb, nums)
+        println(io)
+    end
+    return
 end
 
 function ast2ir(ci::CodeInfo)
@@ -228,34 +368,36 @@ function ast2ir(ci::CodeInfo)
     return bbs
 end
 
-function Base.show(io::IO, inst::Inst)
-end
+show(io::IO, arg::InstArg) = print_instarg(io, arg)
+show(io::IO, inst::Inst) = print_inst(io, inst)
+show(io::IO, bb::BasicBlock) = print_bb(io, bb)
+show(io::IO, bblist::BBList) = print_bblist(io, bblist)
 
-function Base.show(io::IO, bbs::BBList)
-    bb_counter = 0
-    bb_ids = ObjectIdDict()
-    cur_bb = bbs.first
-    while true
-        bb_ids[cur_bb] = bb_counter
-        bb_counter += 1
-        cur_bb = cur_bb.next
-        isa(cur_bb, Void) && break
-    end
-    cur_bb = bbs.first
-    first_bb = true
-    while true
-        if first_bb
-            first_bb = false
-        else
-            println(io)
-        end
-        bb_id = bb_ids[cur_bb]
-        println(io, "$bb_id:")
-        cur_bb = cur_bb.next
-        isa(cur_bb, Void) && break
-    end
-    return
-end
+# function show(io::IO, bbs::BBList)
+#     bb_counter = 0
+#     bb_ids = ObjectIdDict()
+#     cur_bb = bbs.first
+#     while true
+#         bb_ids[cur_bb] = bb_counter
+#         bb_counter += 1
+#         cur_bb = cur_bb.next
+#         isa(cur_bb, Void) && break
+#     end
+#     cur_bb = bbs.first
+#     first_bb = true
+#     while true
+#         if first_bb
+#             first_bb = false
+#         else
+#             println(io)
+#         end
+#         bb_id = bb_ids[cur_bb]
+#         println(io, "$bb_id:")
+#         cur_bb = cur_bb.next
+#         isa(cur_bb, Void) && break
+#     end
+#     return
+# end
 
 end
 
@@ -274,3 +416,12 @@ end
 
 ci = code_typed(sumit2, Tuple{Vector{MyMutable}})[1].first
 println(IR.ast2ir(ci))
+
+bblist = IR.BBList()
+bb = bblist.first
+ins = IR.InsertPt(bb)
+a = IR.Inst(:call, (:identity, 2), Int, ins)
+b = IR.Inst(:call, (:identity, a), Int, ins)
+c = IR.Inst(:call, (:+, a, b), Int, ins)
+d = IR.Inst(:return, (c,), Void, ins)
+bblist

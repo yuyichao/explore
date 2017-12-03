@@ -141,13 +141,11 @@ struct Samples
     allocations::Vector{Int}
 
     function Samples()
-        new(
-            Vector{Float64}(0),
-            Vector{Float64}(0),
-            Vector{Float64}(0),
-            Vector{Int}(0),
-            Vector{Int}(0),
-        )
+        new(Float64[],
+            Float64[],
+            Float64[],
+            Int[],
+            Int[])
     end
 end
 

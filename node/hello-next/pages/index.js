@@ -2,32 +2,52 @@
 
 import Layout from '../components/MyLayout';
 import Link from 'next/link';
-import fetch from 'isomorphic-unfetch';
 
-const Index = props => (
-  <Layout>
-    <h1>Batman TV Shows</h1>
-    <ul>
-      {props.shows.map(show => (
-        <li key={show.id}>
-          <Link href="/p/[id]" as={`/p/${show.id}`}>
-            <a>{show.name}</a>
-          </Link>
-        </li>
-      ))}
-    </ul>
-  </Layout>
-);
+function getPosts() {
+  return [
+    { id: 'hello-nextjs', title: 'Hello Next.js' },
+    { id: 'learn-nextjs', title: 'Learn Next.js is awesome' },
+    { id: 'deploy-nextjs', title: 'Deploy apps with ZEIT' }
+  ];
+}
 
-Index.getInitialProps = async function() {
-  const res = await fetch('https://api.tvmaze.com/search/shows?q=batman');
-  const data = await res.json();
+export default function Blog() {
+  return (
+    <Layout>
+      <h1>My Blog</h1>
+      <ul>
+        {getPosts().map(post => (
+          <li key={post.id}>
+            <Link href="/p/[id]" as={`/p/${post.id}`}>
+              <a>{post.title}</a>
+            </Link>
+          </li>
+        ))}
+      </ul>
+      <style jsx>{`
+        h1,
+        a {
+          font-family: 'Arial';
+        }
 
-  console.log(`Show data fetched. Count: ${data.length}`);
+        ul {
+          padding: 0;
+        }
 
-  return {
-    shows: data.map(entry => entry.show)
-  };
-};
+        li {
+          list-style: none;
+          margin: 5px 0;
+        }
 
-export default Index;
+        a {
+          text-decoration: none;
+          color: blue;
+        }
+
+        a:hover {
+          opacity: 0.6;
+        }
+      `}</style>
+    </Layout>
+  );
+}

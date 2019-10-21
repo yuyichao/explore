@@ -1,0 +1,12 @@
+{
+    "name": "cmake-js-tut-01-module",
+    "version": "1.0.0",
+    "description": "Native module calculating estimate of PI",
+    "dependencies": {
+        "nan": "^2.14.0",
+        "cmake-js": "^6.0.0"
+    }
+    "scripts": {
+        "install": "cmake-js compile"
+    }
+}

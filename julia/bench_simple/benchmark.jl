@@ -1,6 +1,11 @@
 #!/usr/bin/julia -f
 
+using Printf
+
 module Benchmarks
+
+using Printf
+using Statistics
 
 # Estimate the best-case resolution (in nanoseconds) of benchmark timings based
 # on the system clock.
@@ -48,10 +53,6 @@ end
 #     julia_sha1::String: The SHA1 for the Julia Git revision we're working
 #         from.
 #
-#     package_sha1::Nullable{String}: The SHA1 for the current repo's Git
-#         revision (if any). This field is null when the code was not executed
-#         inside of a Git repo.
-#
 #     os::String: The OS we're running on.
 #
 #     cpu_cores::Int: The number of CPU cores available.
@@ -68,7 +69,6 @@ struct Environment
     uuid::String
     timestamp::String
     julia_sha1::String
-    package_sha1::Nullable{String}
     os::String
     cpu_cores::Int
     arch::String
@@ -80,11 +80,6 @@ struct Environment
         uuid = string(Base.Random.uuid4())
         timestamp = Libc.strftime("%Y-%m-%d %H:%M:%S", round(Int, time()))
         julia_sha1 = Base.GIT_VERSION_INFO.commit
-        package_sha1 = Nullable{String}()
-        try
-            sha1 = readchomp(pipeline(`git rev-parse HEAD`, stderr=Base.DevNull))
-            package_sha1 = Nullable{String}(String(sha1))
-        end
         os = string(Sys.KERNEL === :NT ? :Windows : Sys.KERNEL)
         cpu_cores = Sys.CPU_CORES
         arch = string(Sys.ARCH)
@@ -96,7 +91,6 @@ struct Environment
             uuid,
             timestamp,
             julia_sha1,
-            package_sha1,
             os,
             cpu_cores,
             arch,
@@ -275,15 +269,15 @@ end
 struct SummaryStatistics
     n::Int
     n_evaluations::Int
-    elapsed_time_lower::Nullable{Float64}
+    elapsed_time_lower::Union{Nothing,Float64}
     elapsed_time_center::Float64
-    elapsed_time_upper::Nullable{Float64}
-    gc_proportion_lower::Nullable{Float64}
+    elapsed_time_upper::Union{Nothing,Float64}
+    gc_proportion_lower::Union{Nothing,Float64}
     gc_proportion_center::Float64
-    gc_proportion_upper::Nullable{Float64}
+    gc_proportion_upper::Union{Nothing,Float64}
     bytes_allocated::Int
     allocations::Int
-    r²::Nullable{Float64}
+    r²::Union{Nothing,Float64}
 
     function SummaryStatistics(r::Results)
         s = r.samples
@@ -296,34 +290,30 @@ struct SummaryStatistics
                 m = s.elapsed_times[1]
                 gc_proportion = s.gc_times[1] / s.elapsed_times[1]
                 elapsed_time_center = m
-                elapsed_time_lower = Nullable{Float64}()
-                elapsed_time_upper = Nullable{Float64}()
-                r² = Nullable{Float64}()
+                elapsed_time_lower = nothing
+                elapsed_time_upper = nothing
+                r² = nothing
                 gc_proportion_center = 100.0 * gc_proportion
-                gc_proportion_lower = Nullable{Float64}()
-                gc_proportion_upper = Nullable{Float64}()
+                gc_proportion_lower = nothing
+                gc_proportion_upper = nothing
             else
                 @assert all(s.evaluations .== 1.0)
                 m = mean(s.elapsed_times)
                 sem = std(s.elapsed_times) / sqrt(n)
                 gc_proportion = mean(s.gc_times ./ s.elapsed_times)
                 gc_proportion_sem = std(s.gc_times ./ s.elapsed_times) / sqrt(n)
-                r² = Nullable{Float64}()
+                r² = nothing
                 elapsed_time_center = m
                 elapsed_time_lower = max(0.0, m - 6.0 * sem)
                 elapsed_time_upper = m + 6.0 * sem
                 gc_proportion_center = 100.0 * gc_proportion
-                gc_proportion_lower = Nullable{Float64}(
-                    max(
-                        0.0,
-                        gc_proportion_center - 6.0 * 100 * gc_proportion_sem
-                    )
+                gc_proportion_lower = max(
+                    0.0,
+                    gc_proportion_center - 6.0 * 100 * gc_proportion_sem
                 )
-                gc_proportion_upper = Nullable{Float64}(
-                    min(
-                        100.0,
-                        gc_proportion_center + 6.0 * 100 * gc_proportion_sem
-                    )
+                gc_proportion_upper = min(
+                    100.0,
+                    gc_proportion_center + 6.0 * 100 * gc_proportion_sem
                 )
             end
         else
@@ -331,26 +321,22 @@ struct SummaryStatistics
             sem = sem_ols(s.evaluations, s.elapsed_times)
             gc_proportion = mean(s.gc_times ./ s.elapsed_times)
             gc_proportion_sem = std(s.gc_times ./ s.elapsed_times) / sqrt(n)
-            r² = Nullable{Float64}(ols_r²)
+            r² = ols_r²
             elapsed_time_center = b
             elapsed_time_lower = max(0.0, b - 6.0 * sem)
             elapsed_time_upper = b + 6.0 * sem
             gc_proportion_center = 100.0 * gc_proportion
-            gc_proportion_lower = Nullable{Float64}(
-                max(
-                    0.0,
-                    gc_proportion_center - 6.0 * 100 * gc_proportion_sem
-                )
+            gc_proportion_lower = max(
+                0.0,
+                gc_proportion_center - 6.0 * 100 * gc_proportion_sem
             )
-            gc_proportion_upper = Nullable{Float64}(
-                min(
-                    100.0,
-                    gc_proportion_center + 6.0 * 100 * gc_proportion_sem
-                )
+            gc_proportion_upper = min(
+                100.0,
+                gc_proportion_center + 6.0 * 100 * gc_proportion_sem
             )
         end
 
-        i = indmin(s.bytes_allocated ./ s.evaluations)
+        i = argmin(s.bytes_allocated ./ s.evaluations)
 
         bytes_allocated = fld(
             s.bytes_allocated[i],
@@ -480,7 +466,7 @@ macro benchmarkable(name, setup, core, teardown)
                 n_samples::Integer,
                 evaluations::Integer,
             )
-            gc()
+            GC.gc()
             $(benchfn)(s, n_samples, evaluations, $(map(esc, userargs)...))
         end
         function $(benchfn)(
@@ -547,6 +533,8 @@ end
 #     b::Float64: The slope of the univariate OLS model.
 #
 #     r²::Float64: The r-squared of the univariate OLS regresion
+
+linreg(x, y) = hcat(fill!(similar(x), 1), x) \ y
 
 function ols(x::Vector{Float64}, y::Vector{Float64})
     a, b = linreg(x, y)
@@ -734,7 +722,7 @@ using .Benchmarks
 function show_benchmark_result(r)
     stats = Benchmarks.SummaryStatistics(r)
     max_length = 24
-    if isnull(stats.elapsed_time_lower) || isnull(stats.elapsed_time_upper)
+    if stats.elapsed_time_lower === nothing || stats.elapsed_time_upper === nothing
         @printf("%s: %s\n",
                 Benchmarks.lpad("Time per evaluation", max_length),
                 Benchmarks.pretty_time_string(stats.elapsed_time_center))
@@ -742,8 +730,8 @@ function show_benchmark_result(r)
         @printf("%s: %s [%s, %s]\n",
                 Benchmarks.lpad("Time per evaluation", max_length),
                 Benchmarks.pretty_time_string(stats.elapsed_time_center),
-                Benchmarks.pretty_time_string(get(stats.elapsed_time_lower)),
-                Benchmarks.pretty_time_string(get(stats.elapsed_time_upper)))
+                Benchmarks.pretty_time_string(stats.elapsed_time_lower),
+                Benchmarks.pretty_time_string(stats.elapsed_time_upper))
     end
 end
 
@@ -790,7 +778,7 @@ function scale1(b, a, s)
     end
 end
 
-function get_aligned_ones{T}(::Type{T}, n)
+function get_aligned_ones(::Type{T}, n) where T
     while true
         ary = ones(T, n)
         Int(pointer(ary)) % 64 == 0 && return ary

@@ -1,0 +1,30 @@
+sin(1.0)
+     Time per evaluation: 55.98 ns [0.00 ns, 192.72 ns]
+sin(1.0f0)
+     Time per evaluation: 58.58 ns [33.43 ns, 83.72 ns]
+sin(1)
+     Time per evaluation: 75.66 ns [49.64 ns, 101.67 ns]
+sum1(ary32_small)
+     Time per evaluation: 586.52 ns [484.32 ns, 688.72 ns]
+sum1(ary64_small)
+     Time per evaluation: 1.19 μs [991.83 ns, 1.40 μs]
+prod1(ary32_small)
+     Time per evaluation: 629.47 ns [411.68 ns, 847.26 ns]
+prod1(ary64_small)
+     Time per evaluation: 1.23 μs [986.35 ns, 1.47 μs]
+scale1(ary32_small2, ary32_small, 2.0f0)
+     Time per evaluation: 947.28 ns [795.53 ns, 1.10 μs]
+scale1(ary64_small2, ary64_small, 2.0)
+     Time per evaluation: 1.68 μs [1.06 μs, 2.31 μs]
+sum1(ary32_big)
+     Time per evaluation: 8.62 ms [7.99 ms, 9.25 ms]
+sum1(ary64_big)
+     Time per evaluation: 16.80 ms [16.18 ms, 17.42 ms]
+prod1(ary32_big)
+     Time per evaluation: 8.38 ms [7.94 ms, 8.82 ms]
+prod1(ary64_big)
+     Time per evaluation: 17.07 ms [15.81 ms, 18.33 ms]
+scale1(ary32_big2, ary32_big, 2.0f0)
+     Time per evaluation: 10.06 ms [9.65 ms, 10.47 ms]
+scale1(ary64_big2, ary64_big, 2.0)
+     Time per evaluation: 18.43 ms [17.40 ms, 19.46 ms]

@@ -1,142 +1,119 @@
 #include <QApplication>
 #include <QDebug>
-#include <QDialog>
-#include <QString>
-#include <QRegExp>
-#include <QRegExpValidator>
-#include <QLabel>
-#include <QLineEdit>
-#include <QDialogButtonBox>
-#include <QPushButton>
-#include <QTimer>
-#include <QVBoxLayout>
+#include <QPainter>
+#include <QPainterPath>
+#include <QWidget>
 
-class InputDialog : public QDialog {
+void buildSplitPath(const QRectF &r, double radius, double pixelRatio,
+                    QPainterPath &tl, QPainterPath &br)
+{
+    double xd = r.x() + 0.5 / pixelRatio;
+    double yd = r.y() + 0.5 / pixelRatio;
+    double diameter = radius * 2;
+    bool rounded = diameter > 0.0;
+    double width = r.width() - 1 / pixelRatio;
+    double height = r.height() - 1 / pixelRatio;
+
+    if (rounded) {
+        printf("1\n");
+        tl.arcMoveTo(xd + width - diameter, yd, diameter, diameter, 45);
+        tl.arcTo(xd + width - diameter, yd, diameter, diameter, 45, 45);
+        if (width > diameter) {
+            printf("2\n");
+            tl.lineTo(xd + width - diameter, yd);
+        }
+    } else {
+        printf("3\n");
+        tl.moveTo(xd + width, yd);
+    }
+
+    if (rounded) {
+        printf("4\n");
+        tl.arcTo(xd, yd, diameter, diameter, 90, 90);
+    } else {
+        printf("5\n");
+        tl.lineTo(xd, yd);
+    }
+
+    if (rounded) {
+        printf("6\n");
+        tl.arcTo(xd, yd + height - diameter, diameter, diameter, 180, 45);
+        br.arcMoveTo(xd, yd + height - diameter, diameter, diameter, 180 + 45);
+        br.arcTo(xd, yd + height - diameter, diameter, diameter, 180 + 45, 45);
+    } else {
+        printf("7\n");
+        tl.lineTo(xd, yd + height);
+        br.moveTo(xd, yd + height);
+    }
+
+    if (rounded) {
+        printf("8\n");
+        br.arcTo(xd + width - diameter, yd + height - diameter, diameter,
+                 diameter, 270, 90);
+    } else {
+        printf("9\n");
+        br.lineTo(xd + width, yd + height);
+    }
+
+    if (rounded) {
+        printf("10\n");
+        br.arcTo(xd + width - diameter, yd, diameter, diameter, 0, 45);
+    } else {
+        printf("11\n");
+        br.lineTo(xd + width, yd);
+    }
+    qDebug() << __func__ << br << tl;
+}
+
+class RenderArea : public QWidget {
 public:
-    explicit InputDialog(QWidget *parent=nullptr, Qt::WindowFlags=Qt::WindowFlags());
+    explicit RenderArea(QWidget *parent = nullptr)
+        : QWidget(parent)
+    {}
 
-    void setTitle(const QString &title);
-    void setLabelText(const QString &label);
-    void setText(const QString &text);
-    void setValidator(QValidator *validator);
+    QSize minimumSizeHint() const override
+    {
+        return QSize(100, 100);
+    }
 
-    QString getLabelText();
-    QString getText();
-
-    static QString getText(QWidget *parent, const QString &title,
-                           const QString &label, const QString &text,
-                           QValidator *validator=nullptr,
-                           bool *ok=nullptr, Qt::WindowFlags flags=Qt::WindowFlags());
-
-private:
-    void checkValid(const QString &text);
+    QSize sizeHint() const override
+    {
+        return QSize(100, 100);
+    }
 
 private:
-    QLabel *m_label;
-    QLineEdit *m_text;
-    QDialogButtonBox *m_buttonBox;
-    QValidator *m_validator;
+    void paintEvent(QPaintEvent *event) override;
 };
 
-InputDialog::InputDialog(QWidget *parent, Qt::WindowFlags flags)
-    : QDialog(parent),
-      m_validator(nullptr)
+void RenderArea::paintEvent(QPaintEvent*)
 {
-    if (flags != 0)
-        setWindowFlags(flags);
-    auto l = new QVBoxLayout(this);
-    m_label = new QLabel(this);
+    double pixelRatio = devicePixelRatioF();
 
-    m_text = new QLineEdit(this);
-    connect(m_text, &QLineEdit::textChanged, this, &InputDialog::checkValid);
+    QPainter painter(this);
+    painter.setRenderHint(QPainter::Antialiasing, true);
+    painter.setBrush(Qt::NoBrush);
+    painter.setPen(QPen(Qt::black, 1 / pixelRatio));
 
-    m_buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok |
-                                       QDialogButtonBox::Cancel,
-                                       Qt::Horizontal, this);
-    connect(m_buttonBox, &QDialogButtonBox::accepted,
-            this, &InputDialog::accept);
-    connect(m_buttonBox, &QDialogButtonBox::rejected,
-            this, &InputDialog::reject);
+    QPainterPath path;
+    path.moveTo(10 + 0.5 / pixelRatio, 10 + 0.5 / pixelRatio);
+    path.lineTo(90 + 0.5 / pixelRatio, 10 + 0.5 / pixelRatio);
+    painter.drawPath(path);
 
-    l->addWidget(m_label);
-    l->addWidget(m_text);
-    l->addWidget(m_buttonBox);
-}
+    QPainterPath path1;
+    QPainterPath path2;
+    buildSplitPath(QRectF(0, 0, 100, 100), 5, pixelRatio, path1, path2);
 
-void
-InputDialog::setTitle(const QString &title)
-{
-    setWindowTitle(title);
-}
-void
-InputDialog::setLabelText(const QString &label)
-{
-    m_label->setText(label);
-}
-void
-InputDialog::setText(const QString &text)
-{
-    m_text->setText(text);
-}
-void
-InputDialog::setValidator(QValidator *validator)
-{
-    m_validator = validator;
-    m_text->setValidator(validator);
-    checkValid(m_text->text());
-}
-QString
-InputDialog::getLabelText()
-{
-    return m_label->text();
-}
-QString
-InputDialog::getText()
-{
-    return m_text->text();
-}
-void
-InputDialog::checkValid(const QString &_text)
-{
-    if (!m_validator)
-        return;
-    QString text = QString(_text);
-    int pos = 0;
-    bool valid = (m_validator->validate(text, pos) == QValidator::Acceptable);
-    m_buttonBox->button(QDialogButtonBox::Ok)->setEnabled(valid);
+    painter.setPen(QPen(Qt::red, 1 / pixelRatio));
+    painter.drawPath(path1);
+    painter.setPen(QPen(Qt::blue, 1 / pixelRatio));
+    painter.drawPath(path2);
 }
 
-QString InputDialog::getText(QWidget *parent, const QString &title,
-                             const QString &label, const QString &text,
-                             QValidator *validator, bool *ok,
-                             Qt::WindowFlags flags)
-{
-    InputDialog *r = new InputDialog(parent, flags);
-    r->setTitle(title);
-    r->setLabelText(label);
-    r->setText(text);
-    r->setValidator(validator);
-    bool _ok = r->exec() == QDialog::Accepted;
-    if (ok) {
-        *ok = _ok;
-    }
-    if (_ok) {
-        return r->getText();
-    } else {
-        return QString();
-    }
-}
-int
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
-    QTimer::singleShot(0, [&] {
-        QRegExp reg("[0-9]{3,}");
-        QRegExpValidator validator(reg);
-        qDebug() << InputDialog::getText(nullptr, "Title", "Label",
-                                         "888", &validator);
-        app.quit();
-    });
+    RenderArea area;
+    area.show();
     app.exec();
     return 0;
 }

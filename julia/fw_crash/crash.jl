@@ -5,12 +5,9 @@ caller(f, a) = f(a)
 
 const AT = Union{Vector{Int},Vector{Float64}}
 
-@generated function gen_fptr(::Type{Ret}, ::Type{objT}) where {Ret,objT}
-    quote
-        @cfunction(caller,
-                   $(Ref{AT}),
-                   (Ref{typeof(f)}, Ref{Union{Vector{Float64}, Vector{Int64}}},))
-    end
+function gen_fptr(::Type{Ret}, ::Type{objT}) where {Ret,objT}
+    @cfunction(caller, Ref{AT},
+               (Ref{typeof(f)}, Ref{Union{Vector{Int},Vector{Float64}}},))
 end
 fptr = gen_fptr(AT, typeof(f))
 

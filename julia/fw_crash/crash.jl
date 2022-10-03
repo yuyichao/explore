@@ -1,19 +1,17 @@
 #!/usr/bin/julia
 
 f(a) = a .+ 1
-caller(f, a) = f(a)
 
 const AT = Union{Vector{Int},Vector{Float64}}
 
-function gen_fptr(::Type{Ret}, ::Type{objT}) where {Ret,objT}
-    @cfunction(caller, Ref{AT},
-               (Ref{typeof(f)}, Ref{Union{Vector{Int},Vector{Float64}}},))
+function gen_fptr(::Type{Ret}) where {Ret}
+    @cfunction(f, Ref{AT}, (Ref{Union{Vector{Int},Vector{Float64}}},))
 end
-fptr = gen_fptr(AT, typeof(f))
+fptr = gen_fptr(AT)
 
-ccall(fptr, Ref{AT}, (Ref{typeof(f)}, Ref{AT},), f, [1])
+ccall(fptr, Ref{AT}, (Ref{AT},), [1])
 println(1)
 
 GC.gc()
 
-ccall(fptr, Ref{AT}, (Ref{typeof(f)}, Ref{AT},), f, [1])
+ccall(fptr, Ref{AT}, (Ref{AT},), [1])

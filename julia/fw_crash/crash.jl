@@ -5,7 +5,7 @@ f(a) = a .+ 1
 const AT = Union{Vector{Int},Vector{Float64}}
 
 function gen_fptr(::Type{Ret}) where {Ret}
-    @cfunction(f, Ref{AT}, (Ref{Union{Vector{Int},Vector{Float64}}},))
+    @cfunction(f, Ref{AT}, (Ref{AT},))
 end
 fptr = gen_fptr(AT)
 

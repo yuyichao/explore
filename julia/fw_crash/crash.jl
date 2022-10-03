@@ -4,10 +4,10 @@ f(a) = a .+ 1
 
 const AT = Union{Vector{Int},Vector{Float64}}
 
-function gen_fptr(::Type{Ret}) where {Ret}
+function gen_fptr(::Type{T}) where {T}
     @cfunction(f, Ref{AT}, (Ref{AT},))
 end
-fptr = gen_fptr(AT)
+fptr = gen_fptr(Int)
 
 ccall(fptr, Ref{AT}, (Ref{AT},), [1])
 println(1)

@@ -57,7 +57,7 @@ static int multiply_1(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t *z2s
 }
 
 static int multiply_1x2_1(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t *z2s,
-                   int length)
+                          int length)
 {
     auto hi = vdupq_n_u64(0);
     auto lo = vdupq_n_u64(0);
@@ -97,7 +97,7 @@ static int multiply_1x2_1(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t 
 }
 
 static int multiply_1x2_2(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t *z2s,
-                   int length)
+                          int length)
 {
     auto hi = vdupq_n_u64(0);
     auto lo = vdupq_n_u64(0);
@@ -138,8 +138,72 @@ static int multiply_1x2_2(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t 
     return vaddvq_u8(cnt) & 3;
 }
 
-static int multiply_1x4(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t *z2s,
-                 int length)
+static int multiply_1x4_1(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t *z2s,
+                          int length)
+{
+    auto hi = vdupq_n_u64(0);
+    auto lo = vdupq_n_u64(0);
+    for (int i = 0; i < length; i += 8) {
+        auto x1_1 = vld1q_u64(&x1s[i]);
+        auto x1_2 = vld1q_u64(&x1s[i + 2]);
+        auto x1_3 = vld1q_u64(&x1s[i + 4]);
+        auto x1_4 = vld1q_u64(&x1s[i + 6]);
+        auto x2_1 = vld1q_u64(&x2s[i]);
+        auto x2_2 = vld1q_u64(&x2s[i + 2]);
+        auto x2_3 = vld1q_u64(&x2s[i + 4]);
+        auto x2_4 = vld1q_u64(&x2s[i + 6]);
+        vst1q_u64(&x1s[i], x1_1 | x2_1);
+        vst1q_u64(&x1s[i + 2], x1_2 | x2_2);
+        vst1q_u64(&x1s[i + 4], x1_3 | x2_3);
+        vst1q_u64(&x1s[i + 6], x1_4 | x2_4);
+
+        auto z1_1 = vld1q_u64(&z1s[i]);
+        auto z1_2 = vld1q_u64(&z1s[i + 2]);
+        auto z1_3 = vld1q_u64(&z1s[i + 4]);
+        auto z1_4 = vld1q_u64(&z1s[i + 6]);
+        auto z2_1 = vld1q_u64(&z2s[i]);
+        auto z2_2 = vld1q_u64(&z2s[i + 2]);
+        auto z2_3 = vld1q_u64(&z2s[i + 4]);
+        auto z2_4 = vld1q_u64(&z2s[i + 6]);
+        vst1q_u64(&z1s[i], z1_1 | z2_1);
+        vst1q_u64(&z1s[i + 2], z1_2 | z2_2);
+        vst1q_u64(&z1s[i + 4], z1_3 | z2_3);
+        vst1q_u64(&z1s[i + 6], z1_4 | z2_4);
+
+        auto v1_1 = x1_1 & z2_1;
+        auto v1_2 = x1_2 & z2_2;
+        auto v1_3 = x1_3 & z2_3;
+        auto v1_4 = x1_4 & z2_4;
+        auto v2_1 = x2_1 & z1_1;
+        auto v2_2 = x2_2 & z1_2;
+        auto v2_3 = x2_3 & z1_3;
+        auto v2_4 = x2_4 & z1_4;
+        auto m_1 = (z2_1 ^ x1_1) | ~(x2_1 | z1_1);
+        auto m_2 = (z2_2 ^ x1_2) | ~(x2_2 | z1_2);
+        auto m_3 = (z2_3 ^ x1_3) | ~(x2_3 | z1_3);
+        auto m_4 = (z2_4 ^ x1_4) | ~(x2_4 | z1_4);
+        auto change_1 = v1_1 ^ v2_1;
+        auto change_2 = v1_2 ^ v2_2;
+        auto change_3 = v1_3 ^ v2_3;
+        auto change_4 = v1_4 ^ v2_4;
+        hi = hi ^ ((m_1 ^ lo) & change_1);
+        lo = lo ^ change_1;
+        hi = hi ^ ((m_2 ^ lo) & change_2);
+        lo = lo ^ change_2;
+        hi = hi ^ ((m_3 ^ lo) & change_3);
+        lo = lo ^ change_3;
+        hi = hi ^ ((m_4 ^ lo) & change_4);
+        lo = lo ^ change_4;
+    }
+    auto cnt_lo = vcntq_u8((uint8x16_t)lo);
+    auto cnt_hi = vcntq_u8((uint8x16_t)hi);
+    cnt_hi = vshlq_n_u8(cnt_hi, 1);
+    auto cnt = cnt_lo + cnt_hi;
+    return vaddvq_u8(cnt) & 3;
+}
+
+static int multiply_1x4_2(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t *z2s,
+                          int length)
 {
     auto hi = vdupq_n_u64(0);
     auto lo = vdupq_n_u64(0);
@@ -325,7 +389,8 @@ function functions[] = {
     fele(multiply_1),
     fele(multiply_1x2_1),
     fele(multiply_1x2_2),
-    fele(multiply_1x4),
+    fele(multiply_1x4_1),
+    fele(multiply_1x4_2),
     fele(multiply_2),
     fele(multiply_2_2),
     fele(multiply_3),

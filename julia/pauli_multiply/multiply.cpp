@@ -383,7 +383,7 @@ static const uint8_t popcnt_mask[32] __attribute__((aligned (32))) = {
     0xf, 0xf, 0xf, 0xf,
 };
 
-static inline __m256i _mm256_popcnt_epi64(__m256i v)
+static inline __m256i _mm256_popcnt_epi64x4(__m256i v)
 {
     auto tbl = _mm256_load_si256((__m256i*)popcnt_table);
     auto mask = _mm256_load_si256((__m256i*)popcnt_mask);
@@ -422,8 +422,8 @@ static int multiply_1(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t *z2s
         hi = hi ^ ((m ^ lo) & change);
         lo = lo ^ change;
     }
-    auto cnt_hi_256 = _mm256_popcnt_epi64(hi);
-    auto cnt_lo_256 = _mm256_popcnt_epi64(lo);
+    auto cnt_hi_256 = _mm256_popcnt_epi64x4(hi);
+    auto cnt_lo_256 = _mm256_popcnt_epi64x4(lo);
     auto cnt_256 = _mm256_add_epi64(_mm256_slli_epi64(cnt_hi_256, 1), cnt_lo_256);
     return _mm256_addv_epi64(cnt_256) & 3;
 }
@@ -461,8 +461,8 @@ static int multiply_1x2(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t *z
         hi = hi ^ ((m_2 ^ lo) & change_2);
         lo = lo ^ change_2;
     }
-    auto cnt_hi_256 = _mm256_popcnt_epi64(hi);
-    auto cnt_lo_256 = _mm256_popcnt_epi64(lo);
+    auto cnt_hi_256 = _mm256_popcnt_epi64x4(hi);
+    auto cnt_lo_256 = _mm256_popcnt_epi64x4(lo);
     auto cnt_256 = _mm256_add_epi64(_mm256_slli_epi64(cnt_hi_256, 1), cnt_lo_256);
     return _mm256_addv_epi64(cnt_256) & 3;
 }
@@ -524,8 +524,8 @@ static int multiply_1x4(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t *z
         hi = hi ^ ((m_4 ^ lo) & change_4);
         lo = lo ^ change_4;
     }
-    auto cnt_hi_256 = _mm256_popcnt_epi64(hi);
-    auto cnt_lo_256 = _mm256_popcnt_epi64(lo);
+    auto cnt_hi_256 = _mm256_popcnt_epi64x4(hi);
+    auto cnt_lo_256 = _mm256_popcnt_epi64x4(lo);
     auto cnt_256 = _mm256_add_epi64(_mm256_slli_epi64(cnt_hi_256, 1), cnt_lo_256);
     return _mm256_addv_epi64(cnt_256) & 3;
 }
@@ -547,8 +547,8 @@ static int multiply_2(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t *z2s
         auto v2 = x2 & z1;
         auto change = v1 ^ v2;
         auto m = (z2 ^ x1) | ~(x2 | z1);
-        cm = _mm256_add_epi64(cm, _mm256_popcnt_epi64(m & change));
-        cp = _mm256_add_epi64(cp, _mm256_popcnt_epi64(~m & change));
+        cm = _mm256_add_epi64(cm, _mm256_popcnt_epi64x4(m & change));
+        cp = _mm256_add_epi64(cp, _mm256_popcnt_epi64x4(~m & change));
     }
     auto cnt = _mm256_sub_epi64(cp, cm);
     return _mm256_addv_epi64(cnt) & 3;
@@ -570,8 +570,8 @@ static int multiply_2_2(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t *z
         auto v2 = x2 & z1;
         auto change = v1 ^ v2;
         auto m = (z2 ^ x1) | ~(x2 | z1);
-        cnt = _mm256_add_epi64(cnt, _mm256_popcnt_epi64(~m & change));
-        cnt = _mm256_sub_epi64(cnt, _mm256_popcnt_epi64(m & change));
+        cnt = _mm256_add_epi64(cnt, _mm256_popcnt_epi64x4(~m & change));
+        cnt = _mm256_sub_epi64(cnt, _mm256_popcnt_epi64x4(m & change));
     }
     return _mm256_addv_epi64(cnt) & 3;
 }
@@ -593,8 +593,8 @@ static int multiply_3(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t *z2s
         auto v2 = x2 & z1;
         auto change = v1 ^ v2;
         auto m = (z2 ^ x1) | ~(x2 | z1);
-        cm += _mm256_addv_epi64(_mm256_popcnt_epi64(m & change));
-        cp += _mm256_addv_epi64(_mm256_popcnt_epi64(~m & change));
+        cm += _mm256_addv_epi64(_mm256_popcnt_epi64x4(m & change));
+        cp += _mm256_addv_epi64(_mm256_popcnt_epi64x4(~m & change));
     }
     return (cp - cm) & 3;
 }
@@ -603,20 +603,20 @@ static int multiply_3_2(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t *z
 {
     int64_t cnt = 0;
     for (int i = 0; i < length; i += 2) {
-        auto x1 = vld1q_u64(&x1s[i]);
-        auto x2 = vld1q_u64(&x2s[i]);
-        vst1q_u64(&x1s[i], x1 ^ x2);
+        auto x1 = _mm256_load_si256((__m256i*)&x1s[i]);
+        auto x2 = _mm256_load_si256((__m256i*)&x2s[i]);
+        _mm256_store_si256((__m256i*)&x1s[i], x1 ^ x2);
 
-        auto z1 = vld1q_u64(&z1s[i]);
-        auto z2 = vld1q_u64(&z2s[i]);
-        vst1q_u64(&z1s[i], z1 ^ z2);
+        auto z1 = _mm256_load_si256((__m256i*)&z1s[i]);
+        auto z2 = _mm256_load_si256((__m256i*)&z2s[i]);
+        _mm256_store_si256((__m256i*)&z1s[i], z1 ^ z2);
 
         auto v1 = x1 & z2;
         auto v2 = x2 & z1;
         auto change = v1 ^ v2;
         auto m = (z2 ^ x1) | ~(x2 | z1);
-        cnt += _mm256_addv_epi64(_mm256_popcnt_epi64(~m & change));
-        cnt -= _mm256_addv_epi64(_mm256_popcnt_epi64(m & change));
+        cnt += _mm256_addv_epi64(_mm256_popcnt_epi64x4(~m & change));
+        cnt -= _mm256_addv_epi64(_mm256_popcnt_epi64x4(m & change));
     }
     return cnt & 3;
 }

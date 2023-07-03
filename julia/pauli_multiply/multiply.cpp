@@ -66,15 +66,15 @@ static int multiply_1x2_1(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t 
         auto x1_2 = vld1q_u64(&x1s[i + 2]);
         auto x2_1 = vld1q_u64(&x2s[i]);
         auto x2_2 = vld1q_u64(&x2s[i + 2]);
-        vst1q_u64(&x1s[i], x1_1 | x2_1);
-        vst1q_u64(&x1s[i + 2], x1_2 | x2_2);
+        vst1q_u64(&x1s[i], x1_1 ^ x2_1);
+        vst1q_u64(&x1s[i + 2], x1_2 ^ x2_2);
 
         auto z1_1 = vld1q_u64(&z1s[i]);
         auto z1_2 = vld1q_u64(&z1s[i + 2]);
         auto z2_1 = vld1q_u64(&z2s[i]);
         auto z2_2 = vld1q_u64(&z2s[i + 2]);
-        vst1q_u64(&z1s[i], z1_1 | z2_1);
-        vst1q_u64(&z1s[i + 2], z1_2 | z2_2);
+        vst1q_u64(&z1s[i], z1_1 ^ z2_1);
+        vst1q_u64(&z1s[i + 2], z1_2 ^ z2_2);
 
         auto v1_1 = x1_1 & z2_1;
         auto v1_2 = x1_2 & z2_2;
@@ -108,7 +108,7 @@ static int multiply_1x2_2(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t 
         auto x1_2 = x1.val[1];
         auto x2_1 = x2.val[0];
         auto x2_2 = x2.val[1];
-        vst2q_u64(&x1s[i], (uint64x2x2_t{ x1_1 | x2_1, x1_2 | x2_2 }));
+        vst2q_u64(&x1s[i], (uint64x2x2_t{ x1_1 ^ x2_1, x1_2 ^ x2_2 }));
 
         auto z1 = vld2q_u64(&z1s[i]);
         auto z2 = vld2q_u64(&z2s[i]);
@@ -116,7 +116,7 @@ static int multiply_1x2_2(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t 
         auto z1_2 = z1.val[1];
         auto z2_1 = z2.val[0];
         auto z2_2 = z2.val[1];
-        vst2q_u64(&z1s[i], (uint64x2x2_t{ z1_1 | z2_1, z1_2 | z2_2 }));
+        vst2q_u64(&z1s[i], (uint64x2x2_t{ z1_1 ^ z2_1, z1_2 ^ z2_2 }));
 
         auto v1_1 = x1_1 & z2_1;
         auto v1_2 = x1_2 & z2_2;
@@ -152,10 +152,10 @@ static int multiply_1x4_1(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t 
         auto x2_2 = vld1q_u64(&x2s[i + 2]);
         auto x2_3 = vld1q_u64(&x2s[i + 4]);
         auto x2_4 = vld1q_u64(&x2s[i + 6]);
-        vst1q_u64(&x1s[i], x1_1 | x2_1);
-        vst1q_u64(&x1s[i + 2], x1_2 | x2_2);
-        vst1q_u64(&x1s[i + 4], x1_3 | x2_3);
-        vst1q_u64(&x1s[i + 6], x1_4 | x2_4);
+        vst1q_u64(&x1s[i], x1_1 ^ x2_1);
+        vst1q_u64(&x1s[i + 2], x1_2 ^ x2_2);
+        vst1q_u64(&x1s[i + 4], x1_3 ^ x2_3);
+        vst1q_u64(&x1s[i + 6], x1_4 ^ x2_4);
 
         auto z1_1 = vld1q_u64(&z1s[i]);
         auto z1_2 = vld1q_u64(&z1s[i + 2]);
@@ -165,10 +165,10 @@ static int multiply_1x4_1(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t 
         auto z2_2 = vld1q_u64(&z2s[i + 2]);
         auto z2_3 = vld1q_u64(&z2s[i + 4]);
         auto z2_4 = vld1q_u64(&z2s[i + 6]);
-        vst1q_u64(&z1s[i], z1_1 | z2_1);
-        vst1q_u64(&z1s[i + 2], z1_2 | z2_2);
-        vst1q_u64(&z1s[i + 4], z1_3 | z2_3);
-        vst1q_u64(&z1s[i + 6], z1_4 | z2_4);
+        vst1q_u64(&z1s[i], z1_1 ^ z2_1);
+        vst1q_u64(&z1s[i + 2], z1_2 ^ z2_2);
+        vst1q_u64(&z1s[i + 4], z1_3 ^ z2_3);
+        vst1q_u64(&z1s[i + 6], z1_4 ^ z2_4);
 
         auto v1_1 = x1_1 & z2_1;
         auto v1_2 = x1_2 & z2_2;
@@ -218,8 +218,8 @@ static int multiply_1x4_2(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t 
         auto x2_2 = x2.val[1];
         auto x2_3 = x2.val[2];
         auto x2_4 = x2.val[2];
-        vst4q_u64(&x1s[i], (uint64x2x4_t{ x1_1 | x2_1, x1_2 | x2_2,
-                    x1_3 | x2_3, x1_4 | x2_4 }));
+        vst4q_u64(&x1s[i], (uint64x2x4_t{ x1_1 ^ x2_1, x1_2 ^ x2_2,
+                    x1_3 ^ x2_3, x1_4 ^ x2_4 }));
 
         auto z1 = vld4q_u64(&z1s[i]);
         auto z2 = vld4q_u64(&z2s[i]);
@@ -231,8 +231,8 @@ static int multiply_1x4_2(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t 
         auto z2_2 = z2.val[1];
         auto z2_3 = z2.val[2];
         auto z2_4 = z2.val[2];
-        vst4q_u64(&z1s[i], (uint64x2x4_t{ z1_1 | z2_1, z1_2 | z2_2,
-                    z1_3 | z2_3, z1_4 | z2_4 }));
+        vst4q_u64(&z1s[i], (uint64x2x4_t{ z1_1 ^ z2_1, z1_2 ^ z2_2,
+                    z1_3 ^ z2_3, z1_4 ^ z2_4 }));
 
         auto v1_1 = x1_1 & z2_1;
         auto v1_2 = x1_2 & z2_2;

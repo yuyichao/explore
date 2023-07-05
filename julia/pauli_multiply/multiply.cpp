@@ -10,15 +10,17 @@ static int multiply_0(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t *z2s
     for (int i = 0; i < length; i += 1) {
         auto x1 = x1s[i];
         auto x2 = x2s[i];
-        x1s[i] = x1 ^ x2;
+        auto new_x1 = x1 ^ x2;
+        x1s[i] = new_x1;
 
         auto z1 = z1s[i];
         auto z2 = z2s[i];
-        z1s[i] = z1 ^ z2;
+        auto new_z1 = z1 ^ z2;
+        z1s[i] = new_z1;
 
         auto v1 = x1 & z2;
         auto v2 = x2 & z1;
-        auto m = (z2 ^ x1) | ~(x2 | z1);
+        auto m = new_x1 ^ new_z1 ^ v1;
         auto change = v1 ^ v2;
         hi = hi ^ ((m ^ lo) & change);
         lo = lo ^ change;
@@ -38,15 +40,17 @@ static int multiply_1(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t *z2s
     for (int i = 0; i < length; i += 2) {
         auto x1 = vld1q_u64(&x1s[i]);
         auto x2 = vld1q_u64(&x2s[i]);
-        vst1q_u64(&x1s[i], x1 ^ x2);
+        auto new_x1 = x1 ^ x2;
+        vst1q_u64(&x1s[i], new_x1);
 
         auto z1 = vld1q_u64(&z1s[i]);
         auto z2 = vld1q_u64(&z2s[i]);
-        vst1q_u64(&z1s[i], z1 ^ z2);
+        auto new_z1 = z1 ^ z2;
+        vst1q_u64(&z1s[i], new_z1);
 
         auto v1 = x1 & z2;
         auto v2 = x2 & z1;
-        auto m = (z2 ^ x1) | ~(x2 | z1);
+        auto m = new_x1 ^ new_z1 ^ v1;
         auto change = v1 ^ v2;
         hi = hi ^ ((m ^ lo) & change);
         lo = lo ^ change;
@@ -68,22 +72,26 @@ static int multiply_1x2_1(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t 
         auto x1_2 = vld1q_u64(&x1s[i + 2]);
         auto x2_1 = vld1q_u64(&x2s[i]);
         auto x2_2 = vld1q_u64(&x2s[i + 2]);
-        vst1q_u64(&x1s[i], x1_1 ^ x2_1);
-        vst1q_u64(&x1s[i + 2], x1_2 ^ x2_2);
+        auto new_x1_1 = x1_1 ^ x2_1;
+        auto new_x1_2 = x1_2 ^ x2_2;
+        vst1q_u64(&x1s[i], new_x1_1);
+        vst1q_u64(&x1s[i + 2], new_x1_2);
 
         auto z1_1 = vld1q_u64(&z1s[i]);
         auto z1_2 = vld1q_u64(&z1s[i + 2]);
         auto z2_1 = vld1q_u64(&z2s[i]);
         auto z2_2 = vld1q_u64(&z2s[i + 2]);
-        vst1q_u64(&z1s[i], z1_1 ^ z2_1);
-        vst1q_u64(&z1s[i + 2], z1_2 ^ z2_2);
+        auto new_z1_1 = z1_1 ^ z2_1;
+        auto new_z1_2 = z1_2 ^ z2_2;
+        vst1q_u64(&z1s[i], new_z1_1);
+        vst1q_u64(&z1s[i + 2], new_z1_2);
 
         auto v1_1 = x1_1 & z2_1;
         auto v1_2 = x1_2 & z2_2;
         auto v2_1 = x2_1 & z1_1;
         auto v2_2 = x2_2 & z1_2;
-        auto m_1 = (z2_1 ^ x1_1) | ~(x2_1 | z1_1);
-        auto m_2 = (z2_2 ^ x1_2) | ~(x2_2 | z1_2);
+        auto m_1 = new_x1_1 ^ new_z1_1 ^ v1_1;
+        auto m_2 = new_x1_2 ^ new_z1_2 ^ v1_2;
         auto change_1 = v1_1 ^ v2_1;
         auto change_2 = v1_2 ^ v2_2;
         hi = hi ^ ((m_1 ^ lo) & change_1);
@@ -110,7 +118,9 @@ static int multiply_1x2_2(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t 
         auto x1_2 = x1.val[1];
         auto x2_1 = x2.val[0];
         auto x2_2 = x2.val[1];
-        vst2q_u64(&x1s[i], (uint64x2x2_t{ x1_1 ^ x2_1, x1_2 ^ x2_2 }));
+        auto new_x1_1 = x1_1 ^ x2_1;
+        auto new_x1_2 = x1_2 ^ x2_2;
+        vst2q_u64(&x1s[i], (uint64x2x2_t{ new_x1_1, new_x1_2 }));
 
         auto z1 = vld2q_u64(&z1s[i]);
         auto z2 = vld2q_u64(&z2s[i]);
@@ -118,14 +128,16 @@ static int multiply_1x2_2(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t 
         auto z1_2 = z1.val[1];
         auto z2_1 = z2.val[0];
         auto z2_2 = z2.val[1];
-        vst2q_u64(&z1s[i], (uint64x2x2_t{ z1_1 ^ z2_1, z1_2 ^ z2_2 }));
+        auto new_z1_1 = z1_1 ^ z2_1;
+        auto new_z1_2 = z1_2 ^ z2_2;
+        vst2q_u64(&z1s[i], (uint64x2x2_t{ new_z1_1, new_z1_2 }));
 
         auto v1_1 = x1_1 & z2_1;
         auto v1_2 = x1_2 & z2_2;
         auto v2_1 = x2_1 & z1_1;
         auto v2_2 = x2_2 & z1_2;
-        auto m_1 = (z2_1 ^ x1_1) | ~(x2_1 | z1_1);
-        auto m_2 = (z2_2 ^ x1_2) | ~(x2_2 | z1_2);
+        auto m_1 = new_x1_1 ^ new_z1_1 ^ v1_1;
+        auto m_2 = new_x1_2 ^ new_z1_2 ^ v1_2;
         auto change_1 = v1_1 ^ v2_1;
         auto change_2 = v1_2 ^ v2_2;
         hi = hi ^ ((m_1 ^ lo) & change_1);
@@ -154,10 +166,14 @@ static int multiply_1x4_1(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t 
         auto x2_2 = vld1q_u64(&x2s[i + 2]);
         auto x2_3 = vld1q_u64(&x2s[i + 4]);
         auto x2_4 = vld1q_u64(&x2s[i + 6]);
-        vst1q_u64(&x1s[i], x1_1 ^ x2_1);
-        vst1q_u64(&x1s[i + 2], x1_2 ^ x2_2);
-        vst1q_u64(&x1s[i + 4], x1_3 ^ x2_3);
-        vst1q_u64(&x1s[i + 6], x1_4 ^ x2_4);
+        auto new_x1_1 = x1_1 ^ x2_1;
+        auto new_x1_2 = x1_2 ^ x2_2;
+        auto new_x1_3 = x1_3 ^ x2_3;
+        auto new_x1_4 = x1_4 ^ x2_4;
+        vst1q_u64(&x1s[i], new_x1_1);
+        vst1q_u64(&x1s[i + 2], new_x1_2);
+        vst1q_u64(&x1s[i + 4], new_x1_3);
+        vst1q_u64(&x1s[i + 6], new_x1_4);
 
         auto z1_1 = vld1q_u64(&z1s[i]);
         auto z1_2 = vld1q_u64(&z1s[i + 2]);
@@ -167,10 +183,14 @@ static int multiply_1x4_1(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t 
         auto z2_2 = vld1q_u64(&z2s[i + 2]);
         auto z2_3 = vld1q_u64(&z2s[i + 4]);
         auto z2_4 = vld1q_u64(&z2s[i + 6]);
-        vst1q_u64(&z1s[i], z1_1 ^ z2_1);
-        vst1q_u64(&z1s[i + 2], z1_2 ^ z2_2);
-        vst1q_u64(&z1s[i + 4], z1_3 ^ z2_3);
-        vst1q_u64(&z1s[i + 6], z1_4 ^ z2_4);
+        auto new_z1_1 = z1_1 ^ z2_1;
+        auto new_z1_2 = z1_2 ^ z2_2;
+        auto new_z1_3 = z1_3 ^ z2_3;
+        auto new_z1_4 = z1_4 ^ z2_4;
+        vst1q_u64(&z1s[i], new_z1_1);
+        vst1q_u64(&z1s[i + 2], new_z1_2);
+        vst1q_u64(&z1s[i + 4], new_z1_3);
+        vst1q_u64(&z1s[i + 6], new_z1_4);
 
         auto v1_1 = x1_1 & z2_1;
         auto v1_2 = x1_2 & z2_2;
@@ -180,10 +200,10 @@ static int multiply_1x4_1(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t 
         auto v2_2 = x2_2 & z1_2;
         auto v2_3 = x2_3 & z1_3;
         auto v2_4 = x2_4 & z1_4;
-        auto m_1 = (z2_1 ^ x1_1) | ~(x2_1 | z1_1);
-        auto m_2 = (z2_2 ^ x1_2) | ~(x2_2 | z1_2);
-        auto m_3 = (z2_3 ^ x1_3) | ~(x2_3 | z1_3);
-        auto m_4 = (z2_4 ^ x1_4) | ~(x2_4 | z1_4);
+        auto m_1 = new_x1_1 ^ new_z1_1 ^ v1_1;
+        auto m_2 = new_x1_2 ^ new_z1_2 ^ v1_2;
+        auto m_3 = new_x1_3 ^ new_z1_3 ^ v1_3;
+        auto m_4 = new_x1_4 ^ new_z1_4 ^ v1_4;
         auto change_1 = v1_1 ^ v2_1;
         auto change_2 = v1_2 ^ v2_2;
         auto change_3 = v1_3 ^ v2_3;
@@ -220,8 +240,12 @@ static int multiply_1x4_2(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t 
         auto x2_2 = x2.val[1];
         auto x2_3 = x2.val[2];
         auto x2_4 = x2.val[2];
-        vst4q_u64(&x1s[i], (uint64x2x4_t{ x1_1 ^ x2_1, x1_2 ^ x2_2,
-                    x1_3 ^ x2_3, x1_4 ^ x2_4 }));
+        auto new_x1_1 = x1_1 ^ x2_1;
+        auto new_x1_2 = x1_2 ^ x2_2;
+        auto new_x1_3 = x1_3 ^ x2_3;
+        auto new_x1_4 = x1_4 ^ x2_4;
+        vst4q_u64(&x1s[i], (uint64x2x4_t{ new_x1_1, new_x1_2,
+                    new_x1_3, new_x1_4 }));
 
         auto z1 = vld4q_u64(&z1s[i]);
         auto z2 = vld4q_u64(&z2s[i]);
@@ -233,8 +257,12 @@ static int multiply_1x4_2(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t 
         auto z2_2 = z2.val[1];
         auto z2_3 = z2.val[2];
         auto z2_4 = z2.val[2];
-        vst4q_u64(&z1s[i], (uint64x2x4_t{ z1_1 ^ z2_1, z1_2 ^ z2_2,
-                    z1_3 ^ z2_3, z1_4 ^ z2_4 }));
+        auto new_z1_1 = z1_1 ^ z2_1;
+        auto new_z1_2 = z1_2 ^ z2_2;
+        auto new_z1_3 = z1_3 ^ z2_3;
+        auto new_z1_4 = z1_4 ^ z2_4;
+        vst4q_u64(&z1s[i], (uint64x2x4_t{ new_z1_1, new_z1_2,
+                    new_z1_3, new_z1_4 }));
 
         auto v1_1 = x1_1 & z2_1;
         auto v1_2 = x1_2 & z2_2;
@@ -244,10 +272,10 @@ static int multiply_1x4_2(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t 
         auto v2_2 = x2_2 & z1_2;
         auto v2_3 = x2_3 & z1_3;
         auto v2_4 = x2_4 & z1_4;
-        auto m_1 = (z2_1 ^ x1_1) | ~(x2_1 | z1_1);
-        auto m_2 = (z2_2 ^ x1_2) | ~(x2_2 | z1_2);
-        auto m_3 = (z2_3 ^ x1_3) | ~(x2_3 | z1_3);
-        auto m_4 = (z2_4 ^ x1_4) | ~(x2_4 | z1_4);
+        auto m_1 = new_x1_1 ^ new_z1_1 ^ v1_1;
+        auto m_2 = new_x1_2 ^ new_z1_2 ^ v1_2;
+        auto m_3 = new_x1_3 ^ new_z1_3 ^ v1_3;
+        auto m_4 = new_x1_4 ^ new_z1_4 ^ v1_4;
         auto change_1 = v1_1 ^ v2_1;
         auto change_2 = v1_2 ^ v2_2;
         auto change_3 = v1_3 ^ v2_3;
@@ -275,16 +303,18 @@ static int multiply_2(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t *z2s
     for (int i = 0; i < length; i += 2) {
         auto x1 = vld1q_u64(&x1s[i]);
         auto x2 = vld1q_u64(&x2s[i]);
-        vst1q_u64(&x1s[i], x1 ^ x2);
+        auto new_x1 = x1 ^ x2;
+        vst1q_u64(&x1s[i], new_x1);
 
         auto z1 = vld1q_u64(&z1s[i]);
         auto z2 = vld1q_u64(&z2s[i]);
-        vst1q_u64(&z1s[i], z1 ^ z2);
+        auto new_z1 = z1 ^ z2;
+        vst1q_u64(&z1s[i], new_z1);
 
         auto v1 = x1 & z2;
         auto v2 = x2 & z1;
         auto change = v1 ^ v2;
-        auto m = (z2 ^ x1) | ~(x2 | z1);
+        auto m = new_x1 ^ new_z1 ^ v1;
         cm += vcntq_u8((uint8x16_t)(m & change));
         cp += vcntq_u8((uint8x16_t)(~m & change));
     }
@@ -298,16 +328,18 @@ static int multiply_2_2(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t *z
     for (int i = 0; i < length; i += 2) {
         auto x1 = vld1q_u64(&x1s[i]);
         auto x2 = vld1q_u64(&x2s[i]);
-        vst1q_u64(&x1s[i], x1 ^ x2);
+        auto new_x1 = x1 ^ x2;
+        vst1q_u64(&x1s[i], new_x1);
 
         auto z1 = vld1q_u64(&z1s[i]);
         auto z2 = vld1q_u64(&z2s[i]);
-        vst1q_u64(&z1s[i], z1 ^ z2);
+        auto new_z1 = z1 ^ z2;
+        vst1q_u64(&z1s[i], new_z1);
 
         auto v1 = x1 & z2;
         auto v2 = x2 & z1;
         auto change = v1 ^ v2;
-        auto m = (z2 ^ x1) | ~(x2 | z1);
+        auto m = new_x1 ^ new_z1 ^ v1;
         cnt += vcntq_u8((uint8x16_t)(~m & change));
         cnt -= vcntq_u8((uint8x16_t)(m & change));
     }
@@ -321,16 +353,18 @@ static int multiply_3(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t *z2s
     for (int i = 0; i < length; i += 2) {
         auto x1 = vld1q_u64(&x1s[i]);
         auto x2 = vld1q_u64(&x2s[i]);
-        vst1q_u64(&x1s[i], x1 ^ x2);
+        auto new_x1 = x1 ^ x2;
+        vst1q_u64(&x1s[i], new_x1);
 
         auto z1 = vld1q_u64(&z1s[i]);
         auto z2 = vld1q_u64(&z2s[i]);
-        vst1q_u64(&z1s[i], z1 ^ z2);
+        auto new_z1 = z1 ^ z2;
+        vst1q_u64(&z1s[i], new_z1);
 
         auto v1 = x1 & z2;
         auto v2 = x2 & z1;
         auto change = v1 ^ v2;
-        auto m = (z2 ^ x1) | ~(x2 | z1);
+        auto m = new_x1 ^ new_z1 ^ v1;
         cm += vaddvq_u8(vcntq_u8((uint8x16_t)(m & change)));
         cp += vaddvq_u8(vcntq_u8((uint8x16_t)(~m & change)));
     }
@@ -343,16 +377,18 @@ static int multiply_3_2(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t *z
     for (int i = 0; i < length; i += 2) {
         auto x1 = vld1q_u64(&x1s[i]);
         auto x2 = vld1q_u64(&x2s[i]);
-        vst1q_u64(&x1s[i], x1 ^ x2);
+        auto new_x1 = x1 ^ x2;
+        vst1q_u64(&x1s[i], new_x1);
 
         auto z1 = vld1q_u64(&z1s[i]);
         auto z2 = vld1q_u64(&z2s[i]);
-        vst1q_u64(&z1s[i], z1 ^ z2);
+        auto new_z1 = z1 ^ z2;
+        vst1q_u64(&z1s[i], new_z1);
 
         auto v1 = x1 & z2;
         auto v2 = x2 & z1;
         auto change = v1 ^ v2;
-        auto m = (z2 ^ x1) | ~(x2 | z1);
+        auto m = new_x1 ^ new_z1 ^ v1;
         cnt += vaddvq_u8(vcntq_u8((uint8x16_t)(~m & change)));
         cnt -= vaddvq_u8(vcntq_u8((uint8x16_t)(m & change)));
     }
@@ -409,15 +445,17 @@ static int multiply_1(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t *z2s
     for (int i = 0; i < length; i += 4) {
         auto x1 = _mm256_load_si256((__m256i*)&x1s[i]);
         auto x2 = _mm256_load_si256((__m256i*)&x2s[i]);
-        _mm256_store_si256((__m256i*)&x1s[i], x1 ^ x2);
+        auto new_x1 = x1 ^ x2;
+        _mm256_store_si256((__m256i*)&x1s[i], new_x1);
 
         auto z1 = _mm256_load_si256((__m256i*)&z1s[i]);
         auto z2 = _mm256_load_si256((__m256i*)&z2s[i]);
-        _mm256_store_si256((__m256i*)&z1s[i], z1 ^ z2);
+        auto new_z1 = z1 ^ z2;
+        _mm256_store_si256((__m256i*)&z1s[i], new_z1);
 
         auto v1 = x1 & z2;
         auto v2 = x2 & z1;
-        auto m = (z2 ^ x1) | ~(x2 | z1);
+        auto m = new_x1 ^ new_z1 ^ v1;
         auto change = v1 ^ v2;
         hi = hi ^ ((m ^ lo) & change);
         lo = lo ^ change;
@@ -438,22 +476,26 @@ static int multiply_1x2(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t *z
         auto x1_2 = _mm256_load_si256((__m256i*)&x1s[i + 4]);
         auto x2_1 = _mm256_load_si256((__m256i*)&x2s[i]);
         auto x2_2 = _mm256_load_si256((__m256i*)&x2s[i + 4]);
-        _mm256_store_si256((__m256i*)&x1s[i], x1_1 ^ x2_1);
-        _mm256_store_si256((__m256i*)&x1s[i + 4], x1_2 ^ x2_2);
+        auto new_x1_1 = x1_1 ^ x2_1;
+        auto new_x1_2 = x1_2 ^ x2_2;
+        _mm256_store_si256((__m256i*)&x1s[i], new_x1_1);
+        _mm256_store_si256((__m256i*)&x1s[i + 4], new_x1_2);
 
         auto z1_1 = _mm256_load_si256((__m256i*)&z1s[i]);
         auto z1_2 = _mm256_load_si256((__m256i*)&z1s[i + 4]);
         auto z2_1 = _mm256_load_si256((__m256i*)&z2s[i]);
         auto z2_2 = _mm256_load_si256((__m256i*)&z2s[i + 4]);
-        _mm256_store_si256((__m256i*)&z1s[i], z1_1 ^ z2_1);
-        _mm256_store_si256((__m256i*)&z1s[i + 4], z1_2 ^ z2_2);
+        auto new_z1_1 = z1_1 ^ z2_1;
+        auto new_z1_2 = z1_2 ^ z2_2;
+        _mm256_store_si256((__m256i*)&z1s[i], new_z1_1);
+        _mm256_store_si256((__m256i*)&z1s[i + 4], new_z1_2);
 
         auto v1_1 = x1_1 & z2_1;
         auto v1_2 = x1_2 & z2_2;
         auto v2_1 = x2_1 & z1_1;
         auto v2_2 = x2_2 & z1_2;
-        auto m_1 = (z2_1 ^ x1_1) | ~(x2_1 | z1_1);
-        auto m_2 = (z2_2 ^ x1_2) | ~(x2_2 | z1_2);
+        auto m_1 = new_x1_1 ^ new_z1_1 ^ v1_1;
+        auto m_2 = new_x1_2 ^ new_z1_2 ^ v1_2;
         auto change_1 = v1_1 ^ v2_1;
         auto change_2 = v1_2 ^ v2_2;
         hi = hi ^ ((m_1 ^ lo) & change_1);
@@ -481,10 +523,14 @@ static int multiply_1x4(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t *z
         auto x2_2 = _mm256_load_si256((__m256i*)&x2s[i + 4]);
         auto x2_3 = _mm256_load_si256((__m256i*)&x2s[i + 8]);
         auto x2_4 = _mm256_load_si256((__m256i*)&x2s[i + 16]);
-        _mm256_store_si256((__m256i*)&x1s[i], x1_1 ^ x2_1);
-        _mm256_store_si256((__m256i*)&x1s[i + 4], x1_2 ^ x2_2);
-        _mm256_store_si256((__m256i*)&x1s[i + 8], x1_3 ^ x2_3);
-        _mm256_store_si256((__m256i*)&x1s[i + 12], x1_4 ^ x2_4);
+        auto new_x1_1 = x1_1 ^ x2_1;
+        auto new_x1_2 = x1_2 ^ x2_2;
+        auto new_x1_3 = x1_3 ^ x2_3;
+        auto new_x1_4 = x1_4 ^ x2_4;
+        _mm256_store_si256((__m256i*)&x1s[i], new_x1_1);
+        _mm256_store_si256((__m256i*)&x1s[i + 4], new_x1_2);
+        _mm256_store_si256((__m256i*)&x1s[i + 8], new_x1_3);
+        _mm256_store_si256((__m256i*)&x1s[i + 12], new_x1_4);
 
         auto z1_1 = _mm256_load_si256((__m256i*)&z1s[i]);
         auto z1_2 = _mm256_load_si256((__m256i*)&z1s[i + 4]);
@@ -494,10 +540,14 @@ static int multiply_1x4(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t *z
         auto z2_2 = _mm256_load_si256((__m256i*)&z2s[i + 4]);
         auto z2_3 = _mm256_load_si256((__m256i*)&z2s[i + 8]);
         auto z2_4 = _mm256_load_si256((__m256i*)&z2s[i + 16]);
-        _mm256_store_si256((__m256i*)&z1s[i], z1_1 ^ z2_1);
-        _mm256_store_si256((__m256i*)&z1s[i + 4], z1_2 ^ z2_2);
-        _mm256_store_si256((__m256i*)&z1s[i + 8], z1_3 ^ z2_3);
-        _mm256_store_si256((__m256i*)&z1s[i + 12], z1_4 ^ z2_4);
+        auto new_z1_1 = z1_1 ^ z2_1;
+        auto new_z1_2 = z1_2 ^ z2_2;
+        auto new_z1_3 = z1_3 ^ z2_3;
+        auto new_z1_4 = z1_4 ^ z2_4;
+        _mm256_store_si256((__m256i*)&z1s[i], new_z1_1);
+        _mm256_store_si256((__m256i*)&z1s[i + 4], new_z1_2);
+        _mm256_store_si256((__m256i*)&z1s[i + 8], new_z1_3);
+        _mm256_store_si256((__m256i*)&z1s[i + 12], new_z1_4);
 
         auto v1_1 = x1_1 & z2_1;
         auto v1_2 = x1_2 & z2_2;
@@ -507,10 +557,10 @@ static int multiply_1x4(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t *z
         auto v2_2 = x2_2 & z1_2;
         auto v2_3 = x2_3 & z1_3;
         auto v2_4 = x2_4 & z1_4;
-        auto m_1 = (z2_1 ^ x1_1) | ~(x2_1 | z1_1);
-        auto m_2 = (z2_2 ^ x1_2) | ~(x2_2 | z1_2);
-        auto m_3 = (z2_3 ^ x1_3) | ~(x2_3 | z1_3);
-        auto m_4 = (z2_4 ^ x1_4) | ~(x2_4 | z1_4);
+        auto m_1 = new_x1_1 ^ new_z1_1 ^ v1_1;
+        auto m_2 = new_x1_2 ^ new_z1_2 ^ v1_2;
+        auto m_3 = new_x1_3 ^ new_z1_3 ^ v1_3;
+        auto m_4 = new_x1_4 ^ new_z1_4 ^ v1_4;
         auto change_1 = v1_1 ^ v2_1;
         auto change_2 = v1_2 ^ v2_2;
         auto change_3 = v1_3 ^ v2_3;
@@ -537,16 +587,18 @@ static int multiply_2(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t *z2s
     for (int i = 0; i < length; i += 4) {
         auto x1 = _mm256_load_si256((__m256i*)&x1s[i]);
         auto x2 = _mm256_load_si256((__m256i*)&x2s[i]);
-        _mm256_store_si256((__m256i*)&x1s[i], x1 ^ x2);
+        auto new_x1 = x1 ^ x2;
+        _mm256_store_si256((__m256i*)&x1s[i], new_x1);
 
         auto z1 = _mm256_load_si256((__m256i*)&z1s[i]);
         auto z2 = _mm256_load_si256((__m256i*)&z2s[i]);
-        _mm256_store_si256((__m256i*)&z1s[i], z1 ^ z2);
+        auto new_z1 = z1 ^ z2;
+        _mm256_store_si256((__m256i*)&z1s[i], new_z1);
 
         auto v1 = x1 & z2;
         auto v2 = x2 & z1;
         auto change = v1 ^ v2;
-        auto m = (z2 ^ x1) | ~(x2 | z1);
+        auto m = new_x1 ^ new_z1 ^ v1;
         cm = _mm256_add_epi64(cm, _mm256_popcnt_epi64x4(m & change));
         cp = _mm256_add_epi64(cp, _mm256_popcnt_epi64x4(~m & change));
     }
@@ -560,16 +612,18 @@ static int multiply_2_2(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t *z
     for (int i = 0; i < length; i += 4) {
         auto x1 = _mm256_load_si256((__m256i*)&x1s[i]);
         auto x2 = _mm256_load_si256((__m256i*)&x2s[i]);
-        _mm256_store_si256((__m256i*)&x1s[i], x1 ^ x2);
+        auto new_x1 = x1 ^ x2;
+        _mm256_store_si256((__m256i*)&x1s[i], new_x1);
 
         auto z1 = _mm256_load_si256((__m256i*)&z1s[i]);
         auto z2 = _mm256_load_si256((__m256i*)&z2s[i]);
-        _mm256_store_si256((__m256i*)&z1s[i], z1 ^ z2);
+        auto new_z1 = z1 ^ z2;
+        _mm256_store_si256((__m256i*)&z1s[i], new_z1);
 
         auto v1 = x1 & z2;
         auto v2 = x2 & z1;
         auto change = v1 ^ v2;
-        auto m = (z2 ^ x1) | ~(x2 | z1);
+        auto m = new_x1 ^ new_z1 ^ v1;
         cnt = _mm256_add_epi64(cnt, _mm256_popcnt_epi64x4(~m & change));
         cnt = _mm256_sub_epi64(cnt, _mm256_popcnt_epi64x4(m & change));
     }
@@ -583,16 +637,18 @@ static int multiply_3(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t *z2s
     for (int i = 0; i < length; i += 4) {
         auto x1 = _mm256_load_si256((__m256i*)&x1s[i]);
         auto x2 = _mm256_load_si256((__m256i*)&x2s[i]);
-        _mm256_store_si256((__m256i*)&x1s[i], x1 ^ x2);
+        auto new_x1 = x1 ^ x2;
+        _mm256_store_si256((__m256i*)&x1s[i], new_x1);
 
         auto z1 = _mm256_load_si256((__m256i*)&z1s[i]);
         auto z2 = _mm256_load_si256((__m256i*)&z2s[i]);
-        _mm256_store_si256((__m256i*)&z1s[i], z1 ^ z2);
+        auto new_z1 = z1 ^ z2;
+        _mm256_store_si256((__m256i*)&z1s[i], new_z1);
 
         auto v1 = x1 & z2;
         auto v2 = x2 & z1;
         auto change = v1 ^ v2;
-        auto m = (z2 ^ x1) | ~(x2 | z1);
+        auto m = new_x1 ^ new_z1 ^ v1;
         cm += _mm256_addv_epi64(_mm256_popcnt_epi64x4(m & change));
         cp += _mm256_addv_epi64(_mm256_popcnt_epi64x4(~m & change));
     }
@@ -605,16 +661,18 @@ static int multiply_3_2(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t *z
     for (int i = 0; i < length; i += 4) {
         auto x1 = _mm256_load_si256((__m256i*)&x1s[i]);
         auto x2 = _mm256_load_si256((__m256i*)&x2s[i]);
-        _mm256_store_si256((__m256i*)&x1s[i], x1 ^ x2);
+        auto new_x1 = x1 ^ x2;
+        _mm256_store_si256((__m256i*)&x1s[i], new_x1);
 
         auto z1 = _mm256_load_si256((__m256i*)&z1s[i]);
         auto z2 = _mm256_load_si256((__m256i*)&z2s[i]);
-        _mm256_store_si256((__m256i*)&z1s[i], z1 ^ z2);
+        auto new_z1 = z1 ^ z2;
+        _mm256_store_si256((__m256i*)&z1s[i], new_z1);
 
         auto v1 = x1 & z2;
         auto v2 = x2 & z1;
         auto change = v1 ^ v2;
-        auto m = (z2 ^ x1) | ~(x2 | z1);
+        auto m = new_x1 ^ new_z1 ^ v1;
         cnt += _mm256_addv_epi64(_mm256_popcnt_epi64x4(~m & change));
         cnt -= _mm256_addv_epi64(_mm256_popcnt_epi64x4(m & change));
     }

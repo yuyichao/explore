@@ -8,14 +8,16 @@ using BenchmarkTools
     @inbounds @simd ivdep for i in 1:length(x1s)
         x1 = x1s[i]
         x2 = x2s[i]
-        x1s[i] = x1 ⊻ x2
+        new_x1 = x1 ⊻ x2
+        x1s[i] = new_x1
         z1 = z1s[i]
         z2 = z2s[i]
-        z1s[i] = z1 ⊻ z2
+        new_z1 = z1 ⊻ z2
+        z1s[i] = new_z1
 
         v1 = x1 & z2
         v2 = x2 & z1
-        m = (z2 ⊻ x1) | ~(x2 | z1)
+        m = new_x1 ⊻ new_z1 ⊻ v1
         change = v1 ⊻ v2
         hi = hi ⊻ ((m ⊻ lo) & change)
         lo = lo ⊻ change
@@ -31,14 +33,16 @@ end
     @inbounds @simd ivdep for i in 1:length(x1s)
         x1 = x1s[i]
         x2 = x2s[i]
-        x1s[i] = x1 ⊻ x2
+        new_x1 = x1 ⊻ x2
+        x1s[i] = new_x1
         z1 = z1s[i]
         z2 = z2s[i]
-        z1s[i] = z1 ⊻ z2
+        new_z1 = z1 ⊻ z2
+        z1s[i] = new_z1
 
         v1 = x1 & z2
         v2 = x2 & z1
-        m = (z2 ⊻ x1) | ~(x2 | z1)
+        m = new_x1 ⊻ new_z1 ⊻ v1
         change = v1 ⊻ v2
         cm += count_ones(m & change)
         cp += count_ones(~m & change)

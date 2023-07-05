@@ -1,6 +1,7 @@
 #!/usr/bin/julia
 
 using BenchmarkTools
+using SIMD
 
 @inline function multiply_jl(x1s, z1s, x2s, z2s)
     hi = zero(eltype(x1s))
@@ -27,6 +28,60 @@ using BenchmarkTools
     return (cnt_lo + cnt_hi) & 3
 end
 
+@inline function multiply_jl_s(x1s, z1s, x2s, z2s)
+    VT = Vec{4,UInt64}
+    lane = VecRange{4}(0)
+    hi = zero(VT)
+    lo = zero(VT)
+    @inbounds for i in 1:4:length(x1s)
+        x1 = x1s[lane + i]
+        x2 = x2s[lane + i]
+        new_x1 = x1 ⊻ x2
+        x1s[lane + i] = new_x1
+        z1 = z1s[lane + i]
+        z2 = z2s[lane + i]
+        new_z1 = z1 ⊻ z2
+        z1s[lane + i] = new_z1
+
+        v1 = x1 & z2
+        v2 = x2 & z1
+        m = new_x1 ⊻ new_z1 ⊻ v1
+        change = v1 ⊻ v2
+        hi = hi ⊻ ((m ⊻ lo) & change)
+        lo = lo ⊻ change
+    end
+    cnt_lo = count_ones(reinterpret(Vec{32,UInt8}, lo))
+    cnt_hi = count_ones(reinterpret(Vec{32,UInt8}, hi)) << 1
+    return reduce(+, cnt_lo + cnt_hi) & 3
+end
+
+@inline function multiply_jl_s2(x1s, z1s, x2s, z2s)
+    VT = Vec{8,UInt64}
+    lane = VecRange{8}(0)
+    hi = zero(VT)
+    lo = zero(VT)
+    @inbounds for i in 1:8:length(x1s)
+        x1 = x1s[lane + i]
+        x2 = x2s[lane + i]
+        new_x1 = x1 ⊻ x2
+        x1s[lane + i] = new_x1
+        z1 = z1s[lane + i]
+        z2 = z2s[lane + i]
+        new_z1 = z1 ⊻ z2
+        z1s[lane + i] = new_z1
+
+        v1 = x1 & z2
+        v2 = x2 & z1
+        m = new_x1 ⊻ new_z1 ⊻ v1
+        change = v1 ⊻ v2
+        hi = hi ⊻ ((m ⊻ lo) & change)
+        lo = lo ⊻ change
+    end
+    cnt_lo = count_ones(reinterpret(Vec{64,UInt8}, lo))
+    cnt_hi = count_ones(reinterpret(Vec{64,UInt8}, hi)) << 1
+    return reduce(+, cnt_lo + cnt_hi) & 3
+end
+
 @inline function multiply_jl2(x1s, z1s, x2s, z2s)
     cm = zero(eltype(x1s))
     cp = zero(eltype(x1s))
@@ -50,12 +105,14 @@ end
     return (cp - cm) & 3
 end
 
-const x1s = rand(UInt64, 4096)
-const z1s = rand(UInt64, 4096)
-const x2s = rand(UInt64, 4096)
-const z2s = rand(UInt64, 4096)
+const x1s = rand(UInt64, 4096, 1)
+const z1s = rand(UInt64, 4096, 1)
+const x2s = rand(UInt64, 4096, 1)
+const z2s = rand(UInt64, 4096, 1)
 
 @btime multiply_jl(x1s, z1s, x2s, z2s)
+@btime multiply_jl_s(x1s, z1s, x2s, z2s)
+@btime multiply_jl_s2(x1s, z1s, x2s, z2s)
 @btime multiply_jl2(x1s, z1s, x2s, z2s)
 
 using Libdl

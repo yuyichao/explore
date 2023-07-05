@@ -33,22 +33,28 @@ end
     lane = VecRange{4}(0)
     hi = zero(VT)
     lo = zero(VT)
-    @inbounds for i in 1:4:length(x1s)
-        x1 = x1s[lane + i]
-        x2 = x2s[lane + i]
-        new_x1 = x1 ⊻ x2
-        x1s[lane + i] = new_x1
-        z1 = z1s[lane + i]
-        z2 = z2s[lane + i]
-        new_z1 = z1 ⊻ z2
-        z1s[lane + i] = new_z1
+    GC.@preserve x1s z1s x2s z2s begin
+        px1s = pointer(x1s)
+        pz1s = pointer(z1s)
+        px2s = pointer(x2s)
+        pz2s = pointer(z2s)
+        @inbounds for i in 1:4:length(x1s)
+            x1 = vload(VT, px1s + (i - 1) * 4)
+            x2 = vload(VT, px2s + (i - 1) * 4)
+            new_x1 = x1 ⊻ x2
+            vstore(new_x1, px1s + (i - 1) * 4)
+            z1 = vload(VT, pz1s + (i - 1) * 4)
+            z2 = vload(VT, pz2s + (i - 1) * 4)
+            new_z1 = z1 ⊻ z2
+            vstore(new_z1, pz1s + (i - 1) * 4)
 
-        v1 = x1 & z2
-        v2 = x2 & z1
-        m = new_x1 ⊻ new_z1 ⊻ v1
-        change = v1 ⊻ v2
-        hi = hi ⊻ ((m ⊻ lo) & change)
-        lo = lo ⊻ change
+            v1 = x1 & z2
+            v2 = x2 & z1
+            m = new_x1 ⊻ new_z1 ⊻ v1
+            change = v1 ⊻ v2
+            hi = hi ⊻ ((m ⊻ lo) & change)
+            lo = lo ⊻ change
+        end
     end
     cnt_lo = count_ones(reinterpret(Vec{32,UInt8}, lo))
     cnt_hi = count_ones(reinterpret(Vec{32,UInt8}, hi)) << 1
@@ -60,22 +66,28 @@ end
     lane = VecRange{8}(0)
     hi = zero(VT)
     lo = zero(VT)
-    @inbounds for i in 1:8:length(x1s)
-        x1 = x1s[lane + i]
-        x2 = x2s[lane + i]
-        new_x1 = x1 ⊻ x2
-        x1s[lane + i] = new_x1
-        z1 = z1s[lane + i]
-        z2 = z2s[lane + i]
-        new_z1 = z1 ⊻ z2
-        z1s[lane + i] = new_z1
+    GC.@preserve x1s z1s x2s z2s begin
+        px1s = pointer(x1s)
+        pz1s = pointer(z1s)
+        px2s = pointer(x2s)
+        pz2s = pointer(z2s)
+        @inbounds for i in 1:8:length(x1s)
+            x1 = vload(VT, px1s + (i - 1) * 8)
+            x2 = vload(VT, px2s + (i - 1) * 8)
+            new_x1 = x1 ⊻ x2
+            vstore(new_x1, px1s + (i - 1) * 8)
+            z1 = vload(VT, pz1s + (i - 1) * 8)
+            z2 = vload(VT, pz2s + (i - 1) * 8)
+            new_z1 = z1 ⊻ z2
+            vstore(new_z1, pz1s + (i - 1) * 8)
 
-        v1 = x1 & z2
-        v2 = x2 & z1
-        m = new_x1 ⊻ new_z1 ⊻ v1
-        change = v1 ⊻ v2
-        hi = hi ⊻ ((m ⊻ lo) & change)
-        lo = lo ⊻ change
+            v1 = x1 & z2
+            v2 = x2 & z1
+            m = new_x1 ⊻ new_z1 ⊻ v1
+            change = v1 ⊻ v2
+            hi = hi ⊻ ((m ⊻ lo) & change)
+            lo = lo ⊻ change
+        end
     end
     cnt_lo = count_ones(reinterpret(Vec{64,UInt8}, lo))
     cnt_hi = count_ones(reinterpret(Vec{64,UInt8}, hi)) << 1

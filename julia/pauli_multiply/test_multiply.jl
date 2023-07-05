@@ -73,7 +73,7 @@ function test_lib(name)
             break
         end
         print("$(unsafe_string(name_ptr))")
-        fptr = unsafe_load(functions_ptr, i + 1)
+        fptr = Ptr{Cvoid}(unsafe_load(functions_ptr, i + 1))
         i += 2
         @btime multiply($fptr, x1s, z1s, x2s, z2s)
     end

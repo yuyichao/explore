@@ -534,7 +534,7 @@ static int multiply_2(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t *z2s
 {
     auto cm = _mm256_setzero_si256();
     auto cp = _mm256_setzero_si256();
-    for (int i = 0; i < length; i += 2) {
+    for (int i = 0; i < length; i += 4) {
         auto x1 = _mm256_load_si256((__m256i*)&x1s[i]);
         auto x2 = _mm256_load_si256((__m256i*)&x2s[i]);
         _mm256_store_si256((__m256i*)&x1s[i], x1 ^ x2);
@@ -557,7 +557,7 @@ static int multiply_2(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t *z2s
 static int multiply_2_2(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t *z2s, int length)
 {
     auto cnt = _mm256_setzero_si256();
-    for (int i = 0; i < length; i += 2) {
+    for (int i = 0; i < length; i += 4) {
         auto x1 = _mm256_load_si256((__m256i*)&x1s[i]);
         auto x2 = _mm256_load_si256((__m256i*)&x2s[i]);
         _mm256_store_si256((__m256i*)&x1s[i], x1 ^ x2);
@@ -580,7 +580,7 @@ static int multiply_3(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t *z2s
 {
     int64_t cm = 0;
     int64_t cp = 0;
-    for (int i = 0; i < length; i += 2) {
+    for (int i = 0; i < length; i += 4) {
         auto x1 = _mm256_load_si256((__m256i*)&x1s[i]);
         auto x2 = _mm256_load_si256((__m256i*)&x2s[i]);
         _mm256_store_si256((__m256i*)&x1s[i], x1 ^ x2);
@@ -602,7 +602,7 @@ static int multiply_3(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t *z2s
 static int multiply_3_2(uint64_t *x1s, uint64_t *z1s, uint64_t *x2s, uint64_t *z2s, int length)
 {
     int64_t cnt = 0;
-    for (int i = 0; i < length; i += 2) {
+    for (int i = 0; i < length; i += 4) {
         auto x1 = _mm256_load_si256((__m256i*)&x1s[i]);
         auto x2 = _mm256_load_si256((__m256i*)&x2s[i]);
         _mm256_store_si256((__m256i*)&x1s[i], x1 ^ x2);

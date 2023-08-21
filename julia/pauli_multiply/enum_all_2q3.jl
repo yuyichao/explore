@@ -30,16 +30,8 @@ end
 struct _ComputeInfo
     steps::Vector{_ComputeStep}
     max_live::Int8
-    function _ComputeInfo(xzs, vals, prod)
-        val_idxs = Int[]
-        for xz in xzs
-            idx = findfirst(==(xz), vals)
-            if idx === nothing
-                return
-            end
-            push!(val_idxs, idx)
-        end
-        # @show xzs, vals, prod
+    function _ComputeInfo(val_idxs, prod)
+        # @show val_idxs, prod
         steps = _ComputeStep[]
         # The input was loaded before the multiplication at this index.
         loaded = zeros(Bool, 4)
@@ -144,7 +136,7 @@ function _enumerate()
             (false, false, true, false),
             (false, false, false, true))
     init_prod = NTuple{2,Int}[]
-    init_info = _ComputeInfo(init, init, init_prod)
+    init_info = _ComputeInfo([1, 2, 3, 4], init_prod)
 
     xz2_2q_sets = [xz2 for xz2 in xz2_2q if xz2 != init]
 
@@ -155,6 +147,7 @@ function _enumerate()
     new_prod = [init_prod]
     new_vals2 = empty(new_vals)
     new_prod2 = empty(new_prod)
+    val_idxs = Int[]
     while !isempty(xz2_2q_sets)
         # @show length(xz2_2q_sets)
         for (vals, prod) in zip(new_vals, new_prod)
@@ -174,10 +167,20 @@ function _enumerate()
                     push!(new_prod2, prod2)
                     for idx_xz in 1:nxz2
                         xzs = xz2_2q_sets[idx_xz]
-                        new_info = _ComputeInfo(xzs, vals2, prod2)
-                        if new_info === nothing
+
+                        empty!(val_idxs)
+                        for xz in xzs
+                            idx = findfirst(==(xz), vals2)
+                            if idx === nothing
+                                break
+                            end
+                            push!(val_idxs, idx)
+                        end
+                        if length(val_idxs) < 4
                             continue
                         end
+
+                        new_info = _ComputeInfo(val_idxs, prod2)
                         push!(delete_idx, idx_xz)
                         if (xzs in keys(compute_infos) &&
                             compute_infos[xzs].max_live <= new_info.max_live)

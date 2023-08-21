@@ -186,9 +186,11 @@ function _enumerate()
     new_vals2 = empty(new_vals)
     new_prod2 = empty(new_prod)
     while !isempty(xz2_2q)
-        # @show length(xz2_2q)
+        nxz2 = length(xz2_2q)
+        # @show length(nxz2)
         for (vals, prod) in zip(new_vals, new_prod)
             nvals = length(vals)
+            nvals2 = nvals + 1
             for j1 in 1:(nvals - 1)
                 val1 = @inbounds vals[j1]
                 for j2 in j1 + 1:nvals
@@ -201,10 +203,8 @@ function _enumerate()
                     prod2 = [prod; (j1, j2)]
                     push!(new_vals2, vals2)
                     push!(new_prod2, prod2)
-                    nxz2 = length(xz2_2q)
                     for idx_xz in 1:nxz2
                         xzs = @inbounds xz2_2q[idx_xz]
-                        nvals2 = length(vals2)
                         val_idx_last = 0
                         @inbounds for xzi in 1:4
                             xz = xzs[xzi]
@@ -253,7 +253,7 @@ function _enumerate()
             end
         end
         resize!(_delete_idx, length(delete_idx))
-        _delete_idx .= delete_idx
+        @inbounds _delete_idx .= delete_idx
         sort!(_delete_idx)
         deleteat!(xz2_2q, _delete_idx)
         new_vals, new_vals2 = new_vals2, new_vals
@@ -267,8 +267,6 @@ end
 
 const infos = @time _enumerate()
 @time _enumerate()
-# using InteractiveUtils
-# @show @code_typed _enumerate()
 @show mean([length(info.steps) for (res, info) in infos])
 @show maximum([length(info.steps) for (res, info) in infos])
 @show mean([length([step for step in info.steps if step.type == 2]) for (res, info) in infos])

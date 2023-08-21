@@ -43,34 +43,32 @@ struct _ComputeInfo
         steps = _ComputeStep[]
         # The input was loaded before the multiplication at this index.
         loaded = zeros(Bool, 4)
-        function _check_load(before_prod_idx, input_arg)
-            if input_arg > 4 || loaded[input_arg]
-                return
-            end
-            loaded[input_arg] = true
-            push!(steps, _ComputeStep(0, input_arg, 0, 0))
-            store_val = val_idxs[input_arg]
-            if store_val <= 4
-                if loaded[store_val]
-                    push!(steps, _ComputeStep(1, store_val, input_arg, 0))
-                end
-            elseif store_val < before_prod_idx + 4
-                push!(steps, _ComputeStep(1, store_val, input_arg, 0))
-            end
-            for j in 1:4
-                if val_idxs[j] == input_arg
-                    if loaded[j]
-                        push!(steps, _ComputeStep(1, input_arg, j, 0))
-                    end
-                    break
-                end
-            end
-        end
         nprod = length(prod)
         for i in 1:nprod
             p = prod[i]
-            _check_load(i, p[1])
-            _check_load(i, p[2])
+            for input_arg in p
+                if input_arg > 4 || loaded[input_arg]
+                    continue
+                end
+                loaded[input_arg] = true
+                push!(steps, _ComputeStep(0, input_arg, 0, 0))
+                store_val = val_idxs[input_arg]
+                if store_val <= 4
+                    if loaded[store_val]
+                        push!(steps, _ComputeStep(1, store_val, input_arg, 0))
+                    end
+                elseif store_val < i + 4
+                    push!(steps, _ComputeStep(1, store_val, input_arg, 0))
+                end
+                for j in 1:4
+                    if val_idxs[j] == input_arg
+                        if loaded[j]
+                            push!(steps, _ComputeStep(1, input_arg, j, 0))
+                        end
+                        break
+                    end
+                end
+            end
             push!(steps, _ComputeStep(2, i + 4, p[1], p[2]))
             for j in 1:4
                 if val_idxs[j] == i

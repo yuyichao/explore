@@ -120,10 +120,18 @@ struct _ComputeInfo
 end
 
 function _enumerate()
-    pauli_2q = [x for x in Iterators.product((false, true), (false, true),
-                                             (false, true), (false, true)) if any(x)]
-    xz_2q = [(x, z) for (x, z) in Iterators.product(pauli_2q, pauli_2q)
-                 if _anti_commute_2q(x..., z...)]
+    xz_2q = NTuple{2,NTuple{4,Bool}}[]
+    for _x in 1:15
+        x = (_x & 8 != 0, _x & 4 != 0, _x & 2 != 0, _x & 1 != 0)
+        for _z in 1:15
+            z = (_z & 8 != 0, _z & 4 != 0, _z & 2 != 0, _z & 1 != 0)
+            if !_anti_commute_2q(x..., z...)
+                continue
+            end
+            push!(xz_2q, (x, z))
+        end
+    end
+
     xz2_2q = ((x1, z1, x2, z2) for ((x1, z1), (x2, z2)) in
                   Iterators.product(xz_2q, xz_2q)
                   if (_commute_neq_2q(x1..., x2...) &&
@@ -147,43 +155,51 @@ function _enumerate()
     new_prod = [init_prod]
     new_vals2 = empty(new_vals)
     new_prod2 = empty(new_prod)
-    val_idxs = Int[]
+    val_idxs = zeros(Int, 4)
     while !isempty(xz2_2q_sets)
         # @show length(xz2_2q_sets)
         for (vals, prod) in zip(new_vals, new_prod)
             nvals = length(vals)
-            for j1 in 1:nvals
-                val1 = vals[j1]
+            for j1 in 1:(nvals - 1)
+                val1 = @inbounds vals[j1]
                 for j2 in j1 + 1:nvals
-                    val2 = vals[j2]
+                    val2 = @inbounds vals[j2]
                     new_val = val1 .⊻ val2
                     if new_val in vals
                         continue
                     end
-                    nxz2 = length(xz2_2q_sets)
                     vals2 = [vals; new_val]
                     prod2 = [prod; (j1, j2)]
                     push!(new_vals2, vals2)
                     push!(new_prod2, prod2)
+                    nxz2 = length(xz2_2q_sets)
                     for idx_xz in 1:nxz2
-                        xzs = xz2_2q_sets[idx_xz]
-
-                        empty!(val_idxs)
-                        for xz in xzs
-                            idx = findfirst(==(xz), vals2)
-                            if idx === nothing
+                        xzs = @inbounds xz2_2q_sets[idx_xz]
+                        nvals2 = length(vals2)
+                        found = false
+                        @inbounds for xzi in 1:4
+                            xz = xzs[xzi]
+                            found = false
+                            for idx in 1:nvals2
+                                if xz == vals2[idx]
+                                    val_idxs[xzi] = idx
+                                    found = true
+                                    break
+                                end
+                            end
+                            if !found
                                 break
                             end
-                            push!(val_idxs, idx)
                         end
-                        if length(val_idxs) < 4
+                        if !found
                             continue
                         end
 
                         new_info = _ComputeInfo(val_idxs, prod2)
                         push!(delete_idx, idx_xz)
-                        if (xzs in keys(compute_infos) &&
-                            compute_infos[xzs].max_live <= new_info.max_live)
+                        old_info = get(compute_infos, xzs, nothing)
+                        if (old_info !== nothing &&
+                            old_info.max_live <= new_info.max_live)
                             continue
                         end
                         compute_infos[xzs] = new_info

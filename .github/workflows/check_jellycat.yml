@@ -25,6 +25,6 @@ jobs:
         uses: cinotify/github-action@main
         if: ${{ steps.check.outputs.HAS_EMAIL == 1 }}
         with:
-          to: 'yyc1992@gmail.com'
+          to: ${{ secrets.JELLYCAT_EMAIL1 }}
           subject: ${{ steps.check.outputs.EMAIL_TITLE }}
           body: ${{ steps.check.outputs.EMAIL_BODY }}

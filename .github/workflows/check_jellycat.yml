@@ -1,0 +1,29 @@
+name: Version Check
+on:
+  schedule:
+    - cron: "0 * * * *"
+  push:
+    branches: [master]
+jobs:
+  check:
+    name: Check jellycat availability
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+    steps:
+      - uses: actions/cache@v3
+        env:
+          cache-name: cache-jellycat
+        with:
+          path: ~/jellycat
+          key: jellycat
+      - name: Check version
+        id: check
+        run: bash .github/scripts/check_jellycat.jl
+      - name: Send notification
+        uses: cinotify/github-action@main
+        if: ${{ steps.check.outputs.HAS_EMAIL == 1 }}
+        with:
+          to: 'yyc1992@gmail.com'
+          subject: ${{ steps.check.outputs.EMAIL_TITLE }}
+          body: ${{ steps.check.outputs.EMAIL_BODY }}

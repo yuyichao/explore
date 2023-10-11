@@ -28,3 +28,10 @@ jobs:
           to: ${{ secrets.JELLYCAT_EMAIL1 }}
           subject: ${{ steps.check.outputs.EMAIL_TITLE }}
           body: ${{ steps.check.outputs.EMAIL_BODY }}
+      - name: Send notification
+        uses: cinotify/github-action@main
+        if: ${{ steps.check.outputs.HAS_EMAIL == 1 }}
+        with:
+          to: ${{ secrets.JELLYCAT_EMAIL2 }}
+          subject: ${{ steps.check.outputs.EMAIL_TITLE }}
+          body: ${{ steps.check.outputs.EMAIL_BODY }}

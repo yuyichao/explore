@@ -61,8 +61,7 @@ check_and_report() {
                 report "Jellycat check result" "${name}:${item} is now available."
             else
                 echo "${name}:${item} is still not available."
-                report "Jellycat check result" "${name}:${item} is still not available."
-                # report_none
+                report_none
             fi
             return
         fi

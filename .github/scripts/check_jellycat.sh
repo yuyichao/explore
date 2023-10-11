@@ -57,12 +57,18 @@ check_and_report() {
         if res=$(try_check "$url" "$item"); then
             echo "$res" > ~/jellycat/"${name}:${item}"
             if [[ "$res" = yes ]]; then
+                echo "${name}:${item} is now available!"
                 report "Jellycat check result" "${name}:${item} is now available."
+            else
+                echo "${name}:${item} is still not available."
+                report "Jellycat check result" "${name}:${item} is still not available."
+                # report_none
             fi
             return
         fi
         sleep 100
     done
+    echo "Jellycat check error"
     report "Jellycat check error" "${name}:${item}"
 }
 

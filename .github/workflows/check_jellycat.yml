@@ -1,4 +1,4 @@
-name: Version Check
+name: Jellycat Check
 on:
   schedule:
     - cron: "0 * * * *"
@@ -11,6 +11,7 @@ jobs:
     strategy:
       fail-fast: false
     steps:
+      - uses: actions/checkout@v3
       - uses: actions/cache@v3
         env:
           cache-name: cache-jellycat
@@ -19,7 +20,7 @@ jobs:
           key: jellycat
       - name: Check version
         id: check
-        run: bash .github/scripts/check_jellycat.jl
+        run: bash .github/scripts/check_jellycat.jl amuseable-diamond-ring-a2dir
       - name: Send notification
         uses: cinotify/github-action@main
         if: ${{ steps.check.outputs.HAS_EMAIL == 1 }}

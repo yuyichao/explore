@@ -20,7 +20,7 @@ jobs:
           key: jellycat
       - name: Check version
         id: check
-        run: bash .github/scripts/check_jellycat.sh amuseable-diamond-ring-a2dir
+        run: bash .github/scripts/check_jellycat.sh amuseable-bouquet-of-flowers-a2bfl
       - name: Send notification
         uses: cinotify/github-action@main
         if: ${{ steps.check.outputs.HAS_EMAIL == 1 }}

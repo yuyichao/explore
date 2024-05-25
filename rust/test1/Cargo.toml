@@ -22,3 +22,7 @@ path = "src/test2.rs"
 [[bin]]
 name = "trait1"
 path = "src/trait1.rs"
+
+[[bin]]
+name = "get_value"
+path = "src/get_value.rs"

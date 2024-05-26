@@ -27,3 +27,7 @@ path = "src/trait1.rs"
 [[bin]]
 name = "get_value"
 path = "src/get_value.rs"
+
+[[bin]]
+name = "toml_value"
+path = "src/toml_value.rs"

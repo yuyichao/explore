@@ -3,6 +3,7 @@
 from amaranth import *
 from amaranth.lib import wiring, data
 from amaranth.lib.wiring import In, Out
+from amaranth.lib.enum import Enum
 
 from transactron import TModule, Transaction, TransactronContextComponent, Method, def_method
 
@@ -28,6 +29,11 @@ class LED(wiring.Component):
 
         return m
 
+class WaveDir(Enum, shape=1):
+    Up = 0
+    Down = 1
+
+
 class Wave(wiring.Component):
     def __init__(self, n):
         super().__init__({'led': Out(n)})
@@ -38,14 +44,16 @@ class Wave(wiring.Component):
         m.submodules.led = led = LED(self._n)
         m.d.comb += self.led.eq(led.led)
 
+        wavedir = Signal(WaveDir, init=WaveDir.Up)
+
         with Transaction().body(m):
-            with m.FSM():
-                with m.State("Up"):
+            with m.Switch(wavedir):
+                with m.Case(WaveDir.Up):
                     with m.If(led.up(m).end):
-                        m.next = "Down"
-                with m.State("Down"):
+                        m.d.sync += wavedir.eq(WaveDir.Down)
+                with m.Case(WaveDir.Down):
                     with m.If(led.down(m).end):
-                        m.next = "Up"
+                        m.d.sync += wavedir.eq(WaveDir.Up)
         return m
 
 if __name__ == '__main__':

@@ -4,6 +4,8 @@ from amaranth import *
 
 from transactron import TModule, Transaction, Method, def_method
 
+from transactron.lib.simultaneous import condition
+
 class Outer(Elaboratable):
     def elaborate(self, _):
         m = TModule()
@@ -21,11 +23,19 @@ class Outer(Elaboratable):
         outer = Transaction()
         with outer.body(m, ready=C(0)):
             m.d.sync += Print("Outer transaction")
-            outer_trans = Transaction()
-            with outer_trans.body(m, ready=trans_ready):
-                m.d.sync += Print("Inner transaction")
-                inner(m)
-            m.d.top_comb += outer_trans_run.eq(outer_trans.run)
+            with condition(m) as branch:
+                with branch(trans_ready):
+                    m.d.comb += outer_trans_run.eq(1)
+                    inner(m)
+
+        # outer = Transaction()
+        # with outer.body(m, ready=C(0)):
+        #     m.d.sync += Print("Outer transaction")
+        #     outer_trans = Transaction()
+        #     with outer_trans.body(m, ready=trans_ready):
+        #         m.d.sync += Print("Inner transaction")
+        #         inner(m)
+        #     m.d.top_comb += outer_trans_run.eq(outer_trans.run)
 
         # Method definition shows the same issue
         # outer = Method()

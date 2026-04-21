@@ -212,7 +212,7 @@ class TransactionTester(Component):
             if child_node.ismeth:
                 meth = methods[child_node.id]
                 m.d.top_comb += self.run1[child_node.id - 1].eq(meth.run)
-                @def_method(m, meth, ready=self.ready[child_node.id - 1])
+                @def_method(m, meth, ready=self.ready[child_node.id - 1], nonexclusive=child_node.nonexclusive)
                 def _():
                     m.d.comb += self.run2[child_node.id - 1].eq(1)
                     self.emit_node(m, child_node, methods)

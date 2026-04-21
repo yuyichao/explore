@@ -17,9 +17,28 @@ class Node:
         self.subnodes = []
         self.ismeth = ismeth
         self.nonexclusive = nonexclusive
-        self.called = False
+        self.caller = None
         self.callees = []
         self.runnable = True
+        self.mark_state = 0
+
+    def mark(self):
+        if self.mark_state == 2:
+            return True
+        if self.mark_state == 1:
+            return False
+        self.mark_state = 1
+        for callee in self.callees:
+            if not callee.mark():
+                return False
+        for subnode in self.subnodes:
+            if not subnode.mark():
+                return False
+        self.mark_state = 2
+        return True
+
+    def has_loop(self):
+        return not self.mark()
 
     def dump(self):
         return dict(id=self.id,
@@ -51,7 +70,7 @@ class Node:
             cls._load_callee(subnode, sd, nodes)
 
     def reset(self, ready):
-        self.called = False
+        self.caller = None
         if self.id != 0:
             self.runnable = ready[self.id - 1]
         for subnode in self.subnodes:
@@ -63,12 +82,21 @@ class Node:
             changed |= callee.propagate_runnable()
         was_runnable = self.runnable
         for callee in self.callees:
-            self.runnable &= callee.runnable and not callee.called
+            if self.runnable and not callee.runnable:
+                print(f"{self.id} not runnable due to calling of {callee.id}")
+            self.runnable &= callee.runnable
+            if not callee.nonexclusive:
+                if callee.caller is not None and callee.caller is not self:
+                    if self.runnable and not callee.runnable:
+                        print(f"{self.id} not runnable due to conflict on calling of {callee.id}, Caller: {callee.caller.id}")
+                    self.runnable = False
         if was_runnable != self.runnable:
             changed = True
         if not self.runnable:
             for subnode in self.subnodes:
                 changed |= subnode.runnable
+                if subnode.runnable:
+                    print(f"{subnode.id} not runnable due to parent {self.id}")
                 subnode.runnable = False
         for subnode in self.subnodes:
             changed |= subnode.propagate_runnable()
@@ -78,18 +106,19 @@ class Node:
         while self.propagate_runnable():
             pass
 
-    def set_called(self):
-        assert not self.called
+    def set_caller(self, caller):
+        if self.caller is not None:
+            assert self.nonexclusive or self.caller is caller
+            return
         assert self.runnable
-        if not callee.nonexclusive:
-            self.called = True
+        self.caller = caller
         for callee in self.callees:
-            callee.set_called()
+            callee.set_caller(self)
 
     def set_runnable(self):
         assert self.runnable
         for callee in self.callees:
-            callee.set_called()
+            callee.set_caller(self)
 
     def collect_methods(self, methods):
         if self.ismeth:
@@ -97,6 +126,12 @@ class Node:
         for subnode in self.subnodes:
             subnode.collect_methods(methods)
         return methods
+
+    def collect_nodes(self, nodes):
+        nodes[self.id] = self
+        for subnode in self.subnodes:
+            subnode.collect_nodes(nodes)
+        return nodes
 
     def show(self, io, indent):
         if self.id == 0:
@@ -150,7 +185,7 @@ def gen_rand_node(n, nextracall):
         caller.callees.append(meth)
 
     for _ in range(nextracall):
-        while True:
+        while not all(options):
             callid = random.randint(0, noptions - 1)
             if options[callid]:
                 continue
@@ -190,6 +225,7 @@ class TransactionTester(Component):
 
     def elaborate(self, _):
         m = TModule()
+        m._MustUse__silence = True
 
         methods = {}
         for (id, meth_node) in self.graph.collect_methods({}).items():
@@ -201,24 +237,34 @@ class TransactionTester(Component):
 
         return m
 
+def get_bits(data, nbits):
+    for bit in range(nbits):
+        yield ((data >> bit) & 1) != 0
 
-@pytest.mark.parametrize("n", [3])
-@pytest.mark.parametrize("nextracall", [0])
+@pytest.mark.parametrize("n", [4, 8])
+@pytest.mark.parametrize("nextracall", [0, 5])
 @pytest.mark.parametrize("dummy", range(100))
 def test_rand(n, nextracall, dummy):
-    graph = gen_rand_node(n, nextracall)
+    while True:
+        graph = gen_rand_node(n, nextracall)
+        if graph.has_loop():
+            continue
+        p = TransactionTester(n, graph)
+        m = TransactronContextElaboratable(p)
+        try:
+            Fragment.get(m, None)
+        except:
+            continue
+        break
 
-    p = TransactionTester(n, graph)
-    m = TransactronContextElaboratable(p)
-    try:
-        Fragment.get(m, None)
-    except:
-        return
 
     print(graph)
     print(graph.dump())
     p = TransactionTester(n, graph)
     m = TransactronContextElaboratable(p)
+
+    nodes = graph.collect_nodes({})
+    nodes.pop(0)
 
     sim = Simulator(m)
     sim.add_clock(1e-6)
@@ -230,6 +276,55 @@ def test_rand(n, nextracall, dummy):
             run2 = ctx.get(p.run2)
             print(hex(ready), hex(run1), hex(run2))
             assert run1 == run2
+
+            ready_bits = list(get_bits(ready, n))
+            run_bits = list(get_bits(run1, n))
+
+            print("Set ready")
+            graph.reset(ready_bits)
+            for i in range(n):
+                print(f"node {i + 1}: {nodes[i + 1].runnable}")
+
+            print("Propagate")
+            graph.propagate_all_runnable()
+            for i in range(n):
+                print(f"node {i + 1}: {nodes[i + 1].runnable}")
+
+            for i in range(n):
+                if run_bits[i]:
+                    node = nodes[i + 1]
+                    if not node.ismeth:
+                        node.set_runnable()
+
+            print("Resolve conflicts")
+            graph.propagate_all_runnable()
+            for i in range(n):
+                print(f"node {i + 1}: {nodes[i + 1].runnable}")
+
+            for i in range(n):
+                node = nodes[i + 1]
+                if run_bits[i]:
+                    assert node.runnable
+                    if node.ismeth:
+                        assert node.caller is not None
+                else:
+                    if node.ismeth:
+                        assert node.caller is None
+                        node.runnable = False
+
+            print("Disable uncalled method")
+            graph.propagate_all_runnable()
+            for i in range(n):
+                print(f"node {i + 1}: {nodes[i + 1].runnable}")
+
+            for i in range(n):
+                node = nodes[i + 1]
+                if run_bits[i]:
+                    assert node.runnable
+                    if node.ismeth:
+                        assert node.caller is not None
+                else:
+                    assert not node.runnable
 
     sim.add_testbench(test)
     sim.run()

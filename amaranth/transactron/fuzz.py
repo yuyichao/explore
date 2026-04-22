@@ -153,7 +153,7 @@ class Node:
         self.show(io, 0)
         return io.getvalue()
 
-def gen_rand_node(n, nextracall):
+def gen_rand_node(n, nextracall, ensure_called):
     top = Node(0, False, False)
     nodes = [top]
     methods = []
@@ -175,14 +175,15 @@ def gen_rand_node(n, nextracall):
     noptions = nmethods * (n - 1)
     options = [False] * noptions
 
-    for i in range(nmethods):
-        meth = methods[i]
-        callerid = random.randint(1, n - 1)
-        options[(callerid - 1) * nmethods + i] = True
-        if callerid >= meth.id:
-            callerid += 1
-        caller = nodes[callerid]
-        caller.callees.append(meth)
+    if ensure_called:
+        for i in range(nmethods):
+            meth = methods[i]
+            callerid = random.randint(1, n - 1)
+            options[(callerid - 1) * nmethods + i] = True
+            if callerid >= meth.id:
+                callerid += 1
+            caller = nodes[callerid]
+            caller.callees.append(meth)
 
     for _ in range(nextracall):
         while not all(options):
@@ -191,9 +192,9 @@ def gen_rand_node(n, nextracall):
                 continue
             methid = callid % nmethods
             callerid = (callid // nmethods) + 1
+            meth = methods[methid]
             if callerid >= meth.id:
                 callerid += 1
-            meth = methods[methid]
             caller = nodes[callerid]
             caller.callees.append(meth)
             break
@@ -242,11 +243,12 @@ def get_bits(data, nbits):
         yield ((data >> bit) & 1) != 0
 
 @pytest.mark.parametrize("n", [4, 8])
-@pytest.mark.parametrize("nextracall", [0, 5])
+@pytest.mark.parametrize("nextracall", [0, 1, 3, 5])
+@pytest.mark.parametrize("ensure_called", [False, True])
 @pytest.mark.parametrize("dummy", range(100))
-def test_rand(n, nextracall, dummy):
+def test_rand(n, nextracall, dummy, ensure_called):
     while True:
-        graph = gen_rand_node(n, nextracall)
+        graph = gen_rand_node(n, nextracall, ensure_called)
         if graph.has_loop():
             continue
         p = TransactionTester(n, graph)
